@@ -1,0 +1,12 @@
+id: exec-impact-dd-rawdisk
+type: field
+event: EXECVE
+severity: critical
+mitre: T1488
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'dd\s+[^;|]*of=/dev/(sd|vd|xv|nvme|disk|mapper|mmcblk)'
+action: alert

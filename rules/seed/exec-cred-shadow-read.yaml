@@ -1,0 +1,12 @@
+id: exec-cred-shadow-read
+type: field
+event: EXECVE
+severity: high
+mitre: T1003.008
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '/etc/(shadow|gshadow)\b|/etc/shadow-|/etc/passwd-'
+action: alert

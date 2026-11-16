@@ -1,0 +1,12 @@
+id: exec-exfil-curl-upload
+type: field
+event: EXECVE
+severity: medium
+mitre: T1041
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(curl|wget)\s+[^;|]*((-T|--upload-file)\s+[^;|]*https?://|--data-binary\s+@/|-d\s*@(/tmp/|/var/tmp/|/dev/shm/|/root/|/home/)|(-d|--data-binary)\s+@-|-F\s*file=@)'
+action: alert

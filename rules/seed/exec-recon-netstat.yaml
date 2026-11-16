@@ -1,0 +1,21 @@
+id: exec-recon-netstat
+type: field
+event: EXECVE
+severity: low
+mitre: T1049
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\bnetstat\b'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '^ss$|\bss\s+-'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\barp\s+(-a|-n|--show)'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\bfinger\s+\S'
+action: alert

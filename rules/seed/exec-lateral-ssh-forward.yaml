@@ -1,0 +1,12 @@
+id: exec-lateral-ssh-forward
+type: field
+event: EXECVE
+severity: high
+mitre: T1572
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'ssh\s+[^;|]*-[DLR]\s'
+action: alert

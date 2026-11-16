@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package xiezhi.v1;
+
+option go_package = "github.com/xycxmz/xiezhi-public/proto;proto";
+
+import "event.proto";
+
+// Ingest 是 agent → server 的上行通道。
+// 认证：gRPC metadata `x-xiezhi-token`（M1-A；mTLS 于 M2 替换）。
+// 语义：客户端流式批量上报；断线由 agent 侧重连并从 spool 重放，服务端按 (agent_id, seq) 幂等去重。
+service Ingest {
+  rpc Stream(stream EventBatch) returns (StreamSummary);
+}
+
+message StreamSummary {
+  uint64 accepted = 1; // 服务端实际入库数（去重后）
+  string server_version = 2;
+}

@@ -1,0 +1,12 @@
+id: exec-staging-sensitive-tar
+type: field
+event: EXECVE
+severity: high
+mitre: T1074.001
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(tar|zip|rar|7z)\s+[^;|]*(passwd|shadow|id_rsa|\.ssh|known_hosts|authorized_keys)'
+action: alert

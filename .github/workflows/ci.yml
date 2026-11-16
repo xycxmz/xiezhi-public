@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: build + vet + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build
+        run: make build
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+
+  gate:
+    name: detection gates (r5check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Corpus gate (detection)
+        run: go run ./server/tools/r5check tools/benchmark/corpus.yaml rules/seed
+      - name: Probes gate (false positives)
+        run: go run ./server/tools/r5check tools/benchmark/probes.yaml rules/seed
+
+  driver:
+    name: LKM driver cross-build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ko in CentOS 7 container
+        run: bash tools/build_driver_docker.sh 3.10.0-1160.el7.x86_64
+      - name: Check artifact
+        run: test -f build/ko/xiezhi_driver-3.10.0-1160.el7.x86_64.ko

@@ -1,0 +1,28 @@
+# 意图层策略（M4 seed，分值未调参——生产调参项）。
+# builtin 标注器 32 标签中取高频战役面；负分为良性抵扣样例。
+tags:
+  recon_port_scan: 2.0
+  download_and_execute: 5.0
+  remote_download: 1.5
+  cred_material_read: 4.0
+  persistence_cron: 4.5
+  mining_indicator: 9.0
+  tunnel_setup: 6.0
+  privesc_sudo: 3.0
+  user_creation: 3.5
+  reverse_shell: 8.0
+  bind_shell: 7.0
+  shell_history_clear: 5.0
+  audit_log_tamper: 6.0
+  ssh_authorized_key_write: 6.0
+  cloud_credential_read: 7.0
+  data_upload: 3.0
+  proxy_anonymizer: 2.5
+  package_install: 0.5
+  service_restart: 0.5
+  query_service_health: -0.5
+threshold: 8.0
+maintenance_discount: 0.4
+maintenance_tags:
+  - package_install
+  - service_restart

@@ -1,0 +1,18 @@
+id: exec-tunnel-cloudflare
+type: field
+event: EXECVE
+severity: high
+mitre: T1071.001
+match:
+  logic: or
+  conditions:
+    - op: INCL
+      field: execve.proc.argv
+      value: trycloudflare.com
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'cloudflared\s+(tunnel|access|--url)'
+    - op: INCL
+      field: execve.proc.argv
+      value: ngrok
+action: alert

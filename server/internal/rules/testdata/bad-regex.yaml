@@ -1,0 +1,11 @@
+id: x-regex
+type: field
+event: EXECVE
+severity: low
+match:
+  logic: and
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(unclosed'
+action: alert

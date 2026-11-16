@@ -1,0 +1,12 @@
+id: exec-sniffer-run
+type: field
+event: EXECVE
+severity: medium
+mitre: T1040
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\btcpdump\b|\btshark\b|\btermshark\b'
+action: alert

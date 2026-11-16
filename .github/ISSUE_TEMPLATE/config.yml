@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 提问与讨论
+    url: https://github.com/xycxmz/xiezhi-public/discussions
+    about: 使用问题、架构讨论、想法征集请走 Discussions；issue 留给可跟踪的缺陷与规则贡献。
+  - name: 安全漏洞与检测绕过
+    url: https://github.com/xycxmz/xiezhi-public/security/advisories/new
+    about: 漏洞与绕过手法请走私密披露（SECURITY.md），不要开公开 issue。

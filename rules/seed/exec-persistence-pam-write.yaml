@@ -1,0 +1,12 @@
+id: exec-persistence-pam-write
+type: field
+event: EXECVE
+severity: critical
+mitre: T1556.003
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>>|>)\s*/etc/pam\.d'
+action: alert

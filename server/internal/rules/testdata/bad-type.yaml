@@ -1,0 +1,12 @@
+# intent 是 M4 的，本引擎只认 field
+id: x-intent
+type: intent
+event: EXECVE
+severity: low
+match:
+  logic: and
+  conditions:
+    - op: EQU
+      field: execve.proc.argv.0
+      value: nmap
+action: alert

@@ -1,0 +1,15 @@
+id: exec-recon-net-probe
+type: field
+event: EXECVE
+severity: medium
+mitre: T1046
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\b(traceroute|tracepath|tcptraceroute)\b'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\b(nc|ncat|netcat)\s+[^;|]*(-z|-w)\s'
+action: alert

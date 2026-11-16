@@ -1,0 +1,15 @@
+id: exec-hist-clear
+type: field
+event: EXECVE
+severity: medium
+mitre: T1070.003
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'history\s+-c|unset\s+HISTFILE|export\s+HISTFILE=/dev/null|HISTSIZE=0'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'bash_history'
+action: alert

@@ -1,0 +1,17 @@
+# M3 seed 规则集（来自 2026-10~11 战役实证行为）。每文件一条规则
+# （rules 引擎按冻结 schema 的单文档块式加载）。
+id: exec-curl-pipe-shell
+type: field
+event: EXECVE
+severity: high
+mitre: T1059.004
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'curl.*https?://.*\|\s*(ba|z|da)?sh\b'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'wget.*\|\s*(ba|z|da)?sh\b'
+action: alert

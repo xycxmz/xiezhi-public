@@ -1,0 +1,18 @@
+id: exec-persistence-cron-write
+type: field
+event: EXECVE
+severity: high
+mitre: T1053.003
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>>|tee\s+-a)[^;|]*\s*(/var/spool/cron|/etc/crontab|/etc/cron\.)'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>>|>)\s*(/var/spool/cron|/etc/crontab|/etc/cron\.)'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'crontab\s+[^;|]*/'
+action: alert

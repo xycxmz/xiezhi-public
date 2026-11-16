@@ -1,0 +1,21 @@
+[Unit]
+StartLimitIntervalSec=0
+Description=xiezhi server (ingest + pipeline)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/xiezhi
+EnvironmentFile=/opt/xiezhi/etc/server.env
+ExecStart=/opt/xiezhi/bin/xiezhi-server
+Restart=always
+RestartSec=5
+
+User=root
+CPUQuota=400%
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target

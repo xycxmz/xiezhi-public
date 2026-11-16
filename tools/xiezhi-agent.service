@@ -1,0 +1,23 @@
+[Unit]
+StartLimitIntervalSec=0
+Description=xiezhi agent (kernel event collector)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=/opt/xiezhi/bin/xiezhi-agent -c /opt/xiezhi/etc/agent.yaml
+Restart=always
+RestartSec=5
+
+User=root
+# eBPF/LKM 采集需要 root；资源上界防失控
+CPUQuota=200%
+MemoryMax=512M
+WatchdogSec=120
+# 最小加固
+NoNewPrivileges=no
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target

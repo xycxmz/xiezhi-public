@@ -1,0 +1,1194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xiezhi console</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #fff; color: #111; }
+::selection { background: #111; color: #fff; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  padding: 28px 36px 48px;
+}
+button, .tab, tbody tr[data-clickable] { cursor: pointer; }
+button {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px; color: #111; background: #fff;
+  border: 1px solid #e5e5e5; border-radius: 0;
+  padding: 4px 10px;
+}
+button:hover:not(:disabled) { border-color: #111; }
+button:active:not(:disabled) { background: #f9fafb; }
+button:disabled { color: #9ca3af; border-color: #f3f4f6; cursor: default; }
+button:focus-visible, .tab:focus-visible {
+  outline: 2px solid #111; outline-offset: -2px;
+}
+#drawer::-webkit-scrollbar { width: 8px; }
+#drawer::-webkit-scrollbar-thumb { background: #d1d5db; }
+#drawer::-webkit-scrollbar-track { background: #f9fafb; }
+.wrap { max-width: 1120px; }
+header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+.brand { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
+.hmeta { display: flex; gap: 12px; align-items: center; }
+#meta, #updated {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 11px; color: #6b7280;
+}
+#logout { font-size: 11px; padding: 4px 10px; }
+nav { display: flex; gap: 8px; border-bottom: 1px solid #e5e5e5; }
+.tab {
+  background: none; border: none; cursor: pointer;
+  font: inherit; font-size: 13px; color: #6b7280;
+  padding: 10px 14px 9px;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab.on { color: #111; border-bottom-color: #111; }
+#toolbar { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; }
+.filters { display: flex; gap: 12px; align-items: center; }
+.filters[hidden], .meta[hidden] { display: none; }
+.filters label, .meta label {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 11px; color: #6b7280;
+}
+.filters input, .filters select, #limit {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px; color: #111;
+  border: 1px solid #e5e5e5; border-radius: 0;
+  background: #fff; padding: 4px 8px;
+}
+.filters input { width: 150px; }
+.filters input:focus, .filters select:focus, #limit:focus { outline: none; border-color: #111; }
+.meta { display: flex; gap: 12px; align-items: center; }
+table { width: 100%; border-collapse: collapse; }
+th, td {
+  text-align: left; padding: 6px 10px;
+  border-bottom: 1px solid #e5e5e5;
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px; vertical-align: top;
+}
+th { font-size: 11px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+tbody tr:hover { background: #f9fafb; }
+td.ellip { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+td.empty { color: #6b7280; }
+td.detail { background: #f9fafb; }
+td.detail pre {
+  white-space: pre-wrap; word-break: break-all;
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px; padding: 4px 0;
+}
+tr.xrow:hover { background: #f9fafb; }
+.status { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; font-size: 12px; color: #dc2626; padding: 8px 0; }
+.status:empty { display: none; }
+.cap { font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace; font-size: 11px; color: #6b7280; padding: 8px 0; }
+.sev, .st { border-left: 3px solid #6b7280; padding-left: 7px; white-space: nowrap; }
+.sev-critical, .st-escalate { color: #dc2626; border-left-color: #dc2626; }
+.sev-high, .st-parse_error { color: #ea580c; border-left-color: #ea580c; }
+.sev-medium, .st-insufficient_evidence { color: #d97706; border-left-color: #d97706; }
+.sev-low { color: #ca8a04; border-left-color: #ca8a04; }
+.sev-info, .st-benign_candidate { color: #6b7280; border-left-color: #6b7280; }
+.cards {
+  margin: 16px 0 4px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px; max-width: 780px;
+}
+.card {
+  border: 1px solid #e5e5e5; border-radius: 0;
+  padding: 14px 18px;
+}
+.card .num {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 20px; font-weight: 600;
+}
+.card .num.n-critical { color: #dc2626; }
+.card .num.n-high { color: #ea580c; }
+.card .lbl {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em;
+  margin-top: 6px;
+}
+.dash-sec {
+  font-size: 11px; font-weight: 500; color: #6b7280; text-transform: uppercase;
+  letter-spacing: 0.04em; margin: 20px 0 4px;
+}
+.aline {
+  display: flex; gap: 14px; align-items: baseline;
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px; padding: 6px 0; border-bottom: 1px solid #e5e5e5;
+}
+.aline .dim { color: #6b7280; }
+.aline .time { margin-left: auto; color: #6b7280; white-space: nowrap; }
+#tri-stats {
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 12px; color: #6b7280; padding: 4px 0 12px;
+}
+#tri-stats .warn { color: #ea580c; }
+td.stale { color: #6b7280; }
+/* R9 件4：degraded 横幅 */
+#degraded-bar {
+  display: none; background: #b91c1c; color: #fff; padding: 8px 16px;
+  font-size: 13px; cursor: pointer; border-radius: 0; margin-bottom: 12px;
+  max-width: 1120px;
+}
+#degraded-bar:focus-visible { outline: 2px solid #111; outline-offset: -2px; }
+#degraded-bar.on { display: block; }
+/* R9 件1：告警详情抽屉 */
+#drawer-mask {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.32);
+  z-index: 40;
+}
+#drawer-mask.on { display: block; }
+#drawer {
+  position: fixed; top: 0; right: -440px; bottom: 0; width: 420px;
+  background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,.18); z-index: 41;
+  overflow-y: auto; padding: 16px 18px 40px; transition: right .18s ease;
+}
+#drawer.on { right: 0; }
+#drawer h3 { margin: 0 0 4px; font-size: 14px; word-break: break-all; line-height: 1.5; padding-right: 48px; }
+#drawer h3 .sev { margin-right: 6px; }
+#drawer .dsec {
+  font-size: 12px; font-weight: 500; color: #374151;
+  text-transform: uppercase; letter-spacing: .04em;
+  margin: 20px 0 6px; padding-bottom: 3px; border-bottom: 1px solid #e5e5e5;
+}
+#drawer .conf-bar {
+  height: 6px; background: #e5e7eb; border-radius: 0; margin: 6px 0;
+}
+#drawer .conf-bar i { display: block; height: 6px; background: #2563eb; }
+#drawer .note { font-size: 11px; color: #9ca3af; margin-top: 6px; word-break: break-all; }
+#drawer .ptree { font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+#drawer .ptree .hot { color: #b91c1c; font-weight: 700; }
+#drawer .ptree .dead { color: #9ca3af; }
+#drawer .evline {
+  font-family: ui-monospace, monospace; font-size: 11px; padding: 3px 0;
+  border-bottom: 1px solid #f3f4f6; word-break: break-all;
+}
+#drawer .acts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+#drawer-close {
+  position: absolute; top: 10px; right: 12px;
+  font-size: 18px; line-height: 1; padding: 4px 10px;
+}
+#drawer-close:hover { color: #111; background: #f9fafb; border-color: #d1d5db; }
+/* R9 件3：events 行摘要徽章 */
+.evsum {
+  font-family: ui-monospace, monospace; font-size: 11px; color: #6b7280;
+}
+.evsum b { color: #111; font-weight: 600; }
+
+footer {
+  margin-top: 28px; padding-top: 12px; border-top: 1px solid #e5e5e5;
+  font-family: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  font-size: 11px; color: #6b7280;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="brand">xiezhi console</div>
+  <div class="hmeta">
+    <span id="meta"></span>
+    <span id="updated"></span>
+    <button type="button" id="logout">logout</button>
+  </div>
+</header>
+<nav id="tabs">
+  <button type="button" class="tab on" data-tab="dashboard" aria-selected="true">Dashboard</button>
+  <button type="button" class="tab" data-tab="events" aria-selected="false">Events</button>
+  <button type="button" class="tab" data-tab="alerts" aria-selected="false">Alerts</button>
+  <button type="button" class="tab" data-tab="triage" aria-selected="false">Triage</button>
+  <button type="button" class="tab" data-tab="agents" aria-selected="false">Agents</button>
+  <button type="button" class="tab" data-tab="rules" aria-selected="false">Rules</button>
+</nav>
+<div id="toolbar">
+  <div id="filters"></div>
+  <div class="meta" id="meta-bar">
+    <label for="limit">limit</label>
+    <select id="limit">
+      <option>50</option>
+      <option selected>100</option>
+      <option>500</option>
+    </select>
+  </div>
+</div>
+<div id="degraded-bar"></div>
+<main id="main"></main>
+<div id="drawer-mask"></div>
+<aside id="drawer">
+  <button type="button" id="drawer-close" aria-label="close">&times;</button>
+  <div id="drawer-body"></div>
+</aside>
+<footer>1-6 switch tab &middot; r refresh &middot; l logout &middot; auto refresh 30s &middot; endpoints /api/agents /api/rules /api/stats /events /alerts /triage</footer>
+</div>
+<script>
+'use strict';
+var $ = function (s) { return document.querySelector(s); };
+
+var DAY = 86400e3;
+var FRESH = 5 * 60e3;
+var SEV_ORDER = ['critical', 'high', 'medium', 'low', 'info'];
+var EVENT_TYPES = [
+  'EXECVE', 'EXECVEAT', 'FORK', 'EXIT',
+  'CONNECT', 'BIND', 'ACCEPT', 'DNS_QUERY',
+  'FILE_OPEN', 'FILE_CREATE', 'FILE_RENAME', 'FILE_UNLINK', 'FILE_LINK',
+  'MEMFD_CREATE', 'MPROT_EXEC',
+  'MODULE_LOAD', 'USERMODE_HELPER', 'BPF_LOAD',
+  'CRED_CHANGE', 'PTRACE', 'SETSID', 'PRCTL_NAME',
+  'AGENT_HEARTBEAT', 'AGENT_EVENT', 'AGENT_OFFLINE', 'PROC_DIFF', 'JOURNAL_AUTH'
+];
+
+// esc 保留给未来以字符串拼 HTML 的渲染路径；当前树全部走 textContent，不拼用户数据。
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function el(tag, cls, text) {
+  var n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = String(text);
+  return n;
+}
+
+function fmtTime(v) {
+  var s = String(v == null ? '' : v);
+  return s.length >= 19 ? s.slice(5, 10) + ' ' + s.slice(11, 19) : s;
+}
+
+function within(v, ms) {
+  var t = Date.parse(v);
+  return !isNaN(t) && t >= Date.now() - ms;
+}
+
+function fmtBig(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return (n / 1e3).toFixed(0) + 'k';
+  return String(n);
+}
+function sevSpan(v) { return el('span', 'sev sev-' + v, v); }
+function stSpan(v) { return el('span', 'st st-' + v, v); }
+
+function api(path) {
+  return fetch(path, { credentials: 'same-origin' }).then(function (res) {
+    if (res.status === 401) {
+      location.replace('/login');
+      throw new Error('unauthorized');
+    }
+    if (!res.ok) throw new Error(res.status + ' ' + res.statusText);
+    return res.json();
+  });
+}
+
+function logout() {
+  fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' })
+    .catch(function () {})
+    .then(function () { location.replace('/login'); });
+}
+
+function markUpdated() {
+  $('#updated').textContent = 'updated ' + new Date().toTimeString().slice(0, 8);
+}
+
+// ---- R9 件1：告警详情抽屉 ----
+var TRIAGE_COLOR = { escalate: '#b91c1c', benign_candidate: '#15803d', insufficient_evidence: '#6b7280' };
+
+function drawerOpen() { $('#drawer').classList.add('on'); $('#drawer-mask').classList.add('on'); }
+function drawerClose() { $('#drawer').classList.remove('on'); $('#drawer-mask').classList.remove('on'); }
+
+// pid 精确匹配（R7 证据层语义同款）："pid":42 不许命中 "pid":421。
+function pidExactInBody(body, pid) {
+  var pat = '"pid":' + pid, from = 0, i, j;
+  while ((i = body.indexOf(pat, from)) >= 0) {
+    from = i + 1;
+    j = i + pat.length;
+    if (j >= body.length || (body[j] !== ',' && body[j] !== '}')) continue;
+    return true;
+  }
+  return body.indexOf('"pid":"' + pid + '"') >= 0;
+}
+
+// 触发进程 pid 从 event_ref JSON 提取（服务端 treeDrill 同款路径优先序）
+function pidFromRef(ref) {
+  if (!ref) return 0;
+  try {
+    var o = JSON.parse(ref.length > 1500 ? ref.slice(0, 1500) : ref);
+    var paths = [['execve', 'proc', 'pid'], ['net', 'proc', 'pid'], ['dns', 'proc', 'pid'],
+      ['file', 'proc', 'pid'], ['exit', 'pid'], ['fork', 'childPid'], ['cred', 'pid']];
+    for (var i = 0; i < paths.length; i++) {
+      var cur = o;
+      for (var j = 0; j < paths[i].length && cur != null; j++) cur = cur[paths[i][j]];
+      if (cur > 0) return cur;
+    }
+  } catch (e) { /* 截断 ref：尽力 */ }
+  return 0;
+}
+
+// 进程树平铺节点组树（parent_pid 关系，触发 pid 高亮）
+function renderTreeNode(box, nodes, hotPid) {
+  var byPid = {}, roots = [], i, n;
+  for (i = 0; i < nodes.length; i++) byPid[nodes[i].pid] = { n: nodes[i], kids: [] };
+  for (i = 0; i < nodes.length; i++) {
+    n = nodes[i];
+    if (byPid[n.parent_pid] && n.parent_pid !== n.pid) byPid[n.parent_pid].kids.push(byPid[n.pid]);
+    else roots.push(byPid[n.pid]);
+  }
+  function walk(node, depth) {
+    var line = el('div');
+    line.textContent = new Array(depth + 1).join('  ') + (depth ? '\u2514 ' : '') +
+      node.n.pid + (node.n.exited ? '\u2020' : '') + '  ' + (node.n.exe || '') +
+      '  ' + String(node.n.argv || '').slice(0, 44);
+    if (node.n.pid === hotPid) line.classList.add('hot');
+    else if (node.n.exited) line.classList.add('dead');
+    box.appendChild(line);
+    for (var k = 0; k < node.kids.length && k < 30; k++) walk(node.kids[k], depth + 1);
+  }
+  for (i = 0; i < roots.length && i < 20; i++) walk(roots[i], 0);
+}
+
+// 事件行摘要（抽取关键面，原文降级）
+function evSummarize(type, body) {
+  try {
+    var o = typeof body === 'string' ? JSON.parse(body) : body;
+    var p = o.execve && o.execve.proc, c = o.net || o.connect, d = o.dns;
+    if (p) return (p.exe || '') + '  ' + (p.argv || []).slice(0, 3).join(' ');
+    if (d && d.ip) return 'dns ' + bytesToIp(d.ip) + (d.port ? ':' + d.port : '');
+    if (c && c.ip) return (c.family === 4 ? 'tcp4 ' : 'tcp6 ') + bytesToIp(c.ip) + ':' + (c.port || '');
+    if (o.file && o.file.filename) return 'file ' + o.file.filename;
+  } catch (e) { /* 原文降级 */ }
+  return String(typeof body === 'string' ? body.slice(0, 60) : '');
+}
+
+function bytesToIp(b) {
+  if (!b) return '';
+  try {
+    var o = typeof b === 'string' ? JSON.parse(b) : b;
+    if (Array.isArray(o)) {
+      if (o.length === 4) return o.join('.');
+      if (o.length === 16) return o.slice(0, 4).map(function (x) {
+        return ('0' + x.toString(16)).slice(-2);
+      }).join(':') + '::…';
+    }
+  } catch (e) {}
+  return '';
+}
+
+// 抽屉主入口：alert 行数据 r（含 triage_*/event_ref 字段）
+function openAlertDrawer(r) {
+  var body = $('#drawer-body');
+  body.textContent = '';
+  drawerOpen();
+
+  var h = el('h3');
+  h.appendChild(sevSpan(r.severity));
+  h.appendChild(el('span', null, '  ' + r.rule_id));
+  body.appendChild(h);
+  body.appendChild(el('div', 'note', new Date(r.ts).toLocaleString() + '  ' + (r.hostname || '')));
+  if (r.mitre) {
+    var t = r.mitre.replace(/^T(\d+)\.(\d+)$/, 'T$1/$2');
+    var a = el('a', null, 'ATT&CK ' + r.mitre);
+    a.href = 'https://attack.mitre.org/techniques/' + t + '/';
+    a.target = '_blank'; a.rel = 'noopener'; a.style.fontSize = '12px';
+    body.appendChild(a);
+  }
+
+  body.appendChild(el('div', 'dsec', 'LLM 研判（advisory）'));
+  if (r.triage_state) {
+    var badge = el('div');
+    badge.appendChild(stSpan(r.triage_state));
+    if (r.triage_confidence != null) {
+      badge.appendChild(el('span', 'note', '  置信 ' + r.triage_confidence));
+      var bar = el('div', 'conf-bar'), fill = el('i');
+      fill.style.width = Math.round((r.triage_confidence || 0) * 100) + '%';
+      bar.appendChild(fill); body.appendChild(bar);
+    }
+    body.appendChild(badge);
+    if (r.triage_reasoning) body.appendChild(el('div', null, r.triage_reasoning));
+    body.appendChild(el('div', 'note', '研判仅供参考，不影响告警状态。'));
+  } else {
+    body.appendChild(el('div', 'note', '尚无研判记录。'));
+  }
+
+  body.appendChild(el('div', 'dsec', '会话进程树'));
+  var treeBox = el('div', 'ptree');
+  treeBox.appendChild(el('div', 'note', '加载中…'));
+  body.appendChild(treeBox);
+  var pid = pidFromRef(r.event_ref);
+  // 触发 pid 的权威来源是树响应（trigger_pid）：/alerts 列表不带 event_ref
+  // （4KB/行太重），本地 pidFromRef 只是回退。事件聚合等树响应回来再跑。
+  var tpid = 0;
+  fetch('/api/alert/tree?ts_ms=' + r.ts_ms + '&rule_id=' + encodeURIComponent(r.rule_id) +
+    '&agent=' + encodeURIComponent(r.agent_id || ''))
+    .then(function (res) { return res.json(); })
+    .then(function (d) {
+      treeBox.textContent = '';
+      if (!d.found) {
+        treeBox.appendChild(el('div', 'note', '树不可用: ' + (d.reason || 'unknown')));
+        tpid = pid;
+        return;
+      }
+      tpid = d.trigger_pid > 0 ? d.trigger_pid : pid;
+      renderTreeNode(treeBox, d.nodes || [], tpid);
+    })
+    .catch(function (e) {
+      treeBox.textContent = '';
+      treeBox.appendChild(el('div', 'note', '树加载失败: ' + e.message));
+      tpid = pid;
+    })
+    .then(function () { loadRelatedEvents(evBox, r, function () { return tpid; }); });
+
+  body.appendChild(el('div', 'dsec', '该进程相关事件（近 500 条内）'));
+  var evBox = el('div');
+  evBox.appendChild(el('div', 'note', '加载中…'));
+  body.appendChild(evBox);
+
+  body.appendChild(el('div', 'dsec', '动作'));
+  var acts = el('div', 'acts');
+  var ackBtn = el('button', null, '确认告警');
+  ackBtn.addEventListener('click', function () {
+    fetch('/api/alerts/ack', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ts_ms: r.ts_ms, rule_id: r.rule_id, agent_id: r.agent_id })
+    }).then(function (res) {
+      if (!res.ok) throw new Error(res.status);
+      ackBtn.disabled = true; ackBtn.textContent = '已确认';
+    }).catch(function (e) { ackBtn.textContent = '失败:' + e.message; });
+  });
+  acts.appendChild(ackBtn);
+  var evBtn = el('button', null, 'Events 中看此机');
+  evBtn.addEventListener('click', function () {
+    drawerClose(); switchTab('events');
+    var f = document.getElementById('f-events-agent');
+    if (f) f.value = r.agent_id || '';
+    load(cur());
+  });
+  acts.appendChild(evBtn);
+  var agBtn = el('button', null, 'Agents 视图');
+  agBtn.addEventListener('click', function () { drawerClose(); switchTab('agents'); });
+  acts.appendChild(agBtn);
+  body.appendChild(acts);
+}
+
+// 相关事件聚合（抽屉用）：等树响应确定 pid 后再过滤该 agent 近 500 条。
+function loadRelatedEvents(evBox, r, getPid) {
+  if (!r.agent_id) { evBox.textContent = ''; evBox.appendChild(el('div', 'note', '无 agent_id，无法聚合。')); return; }
+  api('/events?agent=' + encodeURIComponent(r.agent_id) + '&limit=500')
+    .then(function (rows) {
+      var p = getPid() || 0;
+      evBox.textContent = '';
+      if (p <= 0) { evBox.appendChild(el('div', 'note', '无法确定触发 pid，跳过聚合。')); return; }
+      var hits = [];
+      for (var i = 0; i < rows.length && hits.length < 30; i++) {
+        if (pidExactInBody(String(rows[i].body || ''), p)) hits.push(rows[i]);
+      }
+      if (!hits.length) { evBox.appendChild(el('div', 'note', '窗口内无该 pid 事件。')); return; }
+      for (var k = 0; k < hits.length; k++) {
+        var line = el('div', 'evline');
+        line.textContent = fmtTime(hits[k].ts) + '  ' + hits[k].event_type + '  ' +
+          evSummarize(hits[k].event_type, hits[k].body);
+        evBox.appendChild(line);
+      }
+    })
+    .catch(function (e) {
+      evBox.textContent = '';
+      evBox.appendChild(el('div', 'note', '事件聚合失败: ' + e.message));
+    });
+}
+
+// R9 件4：degraded 横幅
+function refreshDegradedBar() {
+  api('/api/stats').then(function (d) {
+    var bar = $('#degraded-bar');
+    if (d.degraded && d.degraded.length) {
+      bar.textContent = '\u26a0 degraded: ' + d.degraded.join('; ') + '（点击查看 Dashboard）';
+      bar.classList.add('on');
+    } else {
+      bar.classList.remove('on');
+    }
+  }).catch(function () { /* 横幅静默：stats 失败不吵 */ });
+}
+
+$('#drawer-close').addEventListener('click', drawerClose);
+$('#degraded-bar').addEventListener('click', function () { switchTab('dashboard'); });
+$('#drawer-mask').addEventListener('click', drawerClose);
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'Escape') drawerClose();
+});
+
+
+function buildTable(cols) {
+  var t = el('table');
+  var thead = el('thead');
+  var tr = el('tr');
+  for (var i = 0; i < cols.length; i++) tr.appendChild(el('th', null, cols[i]));
+  thead.appendChild(tr);
+  t.appendChild(thead);
+  var tb = el('tbody');
+  t.appendChild(tb);
+  return { t: t, tb: tb, n: cols.length };
+}
+
+function emptyRow(tb, n) {
+  var tr = el('tr');
+  var td = el('td', 'empty', 'no rows');
+  td.colSpan = n;
+  tr.appendChild(td);
+  tb.appendChild(tr);
+}
+
+function toggleDetail(tr, fill) {
+  var nxt = tr.nextElementSibling;
+  if (nxt && nxt.classList.contains('xrow')) {
+    nxt.parentNode.removeChild(nxt);
+    return;
+  }
+  var dtr = el('tr', 'xrow');
+  var td = el('td', 'detail');
+  td.colSpan = tr.children.length;
+  fill(td);
+  dtr.appendChild(td);
+  tr.parentNode.insertBefore(dtr, tr.nextSibling);
+}
+
+function loadTable(t) {
+  var p = t.q ? t.q() : defaultQuery(t);
+  api(t.ep + '?' + p.toString()).then(function (rows) {
+    if (!Array.isArray(rows)) throw new Error('unexpected payload');
+    t.status.textContent = '';
+    t.tb.textContent = '';
+    if (!rows.length) {
+      emptyRow(t.tb, t.n);
+    } else {
+      for (var i = 0; i < rows.length; i++) t.row(t.tb, rows[i]);
+    }
+    if (t.capped) t.cap.textContent = t.baseCap + (rows.length === t.capped ? ' · sample capped at ' + t.capped : '');
+    markUpdated();
+  }).catch(function (e) {
+    t.status.textContent = 'error: ' + e.message;
+  });
+}
+
+function defaultQuery(t) {
+  var p = new URLSearchParams();
+  p.set('limit', $('#limit').value);
+  var fg = t.filters || [];
+  for (var j = 0; j < fg.length; j++) {
+    var v = document.getElementById('f-' + t.id + '-' + fg[j].k).value;
+    if (v) p.set(fg[j].k, v);
+  }
+  return p;
+}
+
+// ---- events tab
+
+var eventsTab = {
+  id: 'events', ep: '/events',
+  filters: [{ k: 'agent' }, { k: 'type', options: EVENT_TYPES }],
+  cols: ['ts', 'event_type', 'hostname', 'body'],
+  mount: function (sec) {
+    var b = buildTable(this.cols);
+    this.tb = b.tb; this.n = b.n;
+    this.status = el('div', 'status');
+    sec.appendChild(b.t); sec.appendChild(this.status);
+  },
+  row: function (tb, r) {
+    var tr = el('tr');
+    tr.appendChild(el('td', null, fmtTime(r.ts)));
+    tr.appendChild(el('td', null, r.event_type));
+    tr.appendChild(el('td', null, r.hostname));
+    var td = el('td', 'ellip');
+    // R9 件3：行内摘要（exe+argv / ip:port / file），点行仍看全量 pretty JSON。
+    var sum = el('div', 'evsum');
+    var sumB = el('b', null, r.event_type);
+    sum.appendChild(sumB);
+    sum.appendChild(document.createTextNode('  ' + evSummarize(r.event_type, r.body)));
+    td.appendChild(sum);
+    var s = r.body == null ? '' : JSON.stringify(r.body);
+    td.title = s;
+    tr.appendChild(td);
+    tr.addEventListener('click', function () {
+      toggleDetail(tr, function (cell) {
+        cell.appendChild(el('pre', null, r.body == null ? '' : JSON.stringify(r.body, null, 2)));
+      });
+    });
+    tb.appendChild(tr);
+  },
+  load: function () { loadTable(this); }
+};
+
+// ---- alerts tab
+
+var alertsTab = {
+  id: 'alerts', ep: '/alerts',
+  filters: [
+    { k: 'agent' },
+    { k: 'rule' },
+    { k: 'severity', options: ['critical', 'high', 'medium', 'low', 'info'] },
+    { k: 'acked', options: ['hide', 'only'] }
+  ],
+  cols: ['ts', 'rule_id', 'severity', 'hostname', 'summary', 'ack'],
+  mount: function (sec) {
+    var b = buildTable(this.cols);
+    this.tb = b.tb; this.n = b.n;
+    this.status = el('div', 'status');
+    sec.appendChild(b.t); sec.appendChild(this.status);
+  },
+  row: function (tb, r) {
+    var tr = el('tr');
+    tr.appendChild(el('td', null, fmtTime(r.ts)));
+    var rid = el('td', null, r.rule_id);
+    // advisory（R7）：LLM 研判结论 badge——escalate 红 / benign 绿 /
+    // insufficient 灰；只显示，不影响告警状态（零关闭权红线）。
+    if (r.triage_state) {
+      var c = { escalate: '#b00', benign_candidate: '#080', insufficient_evidence: '#888' }[r.triage_state] || '#888';
+      var b = el('span', null, ' ' + r.triage_state);
+      b.style.cssText = 'color:' + c + ';font-size:11px';
+      if (r.triage_confidence != null) b.title = 'LLM 置信 ' + r.triage_confidence;
+      rid.appendChild(b);
+    }
+    tr.appendChild(rid);
+    var sev = el('td');
+    sev.appendChild(sevSpan(r.severity));
+    tr.appendChild(sev);
+    tr.appendChild(el('td', null, r.hostname));
+    var td = el('td', 'ellip', r.summary == null ? '' : r.summary);
+    td.title = r.summary == null ? '' : r.summary;
+    tr.appendChild(td);
+    // 确认工作流（R6.4）：ack 键 = (ts_ms, rule_id, agent_id)（S-1：同毫秒
+    // 同规则跨主机告警不互掩），POST 幂等。
+    var ackTd = el('td');
+    var btn = el('button', null, '确认');
+    btn.style.fontSize = '11px';
+    btn.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      fetch('/api/alerts/ack', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ts_ms: r.ts_ms, rule_id: r.rule_id, agent_id: r.agent_id })
+      }).then(function (res) {
+        if (!res.ok) throw new Error('ack http ' + res.status);
+        btn.disabled = true;
+        btn.textContent = '已确认';
+        var v = document.getElementById('f-alerts-acked');
+        if (v && v.value === 'hide') tr.remove();
+      }).catch(function (e) {
+        btn.textContent = '失败:' + e.message;
+      });
+    });
+    ackTd.appendChild(btn);
+    tr.appendChild(ackTd);
+    tr.setAttribute('data-clickable', '');
+    tr.addEventListener('click', function () { openAlertDrawer(r); });
+    tb.appendChild(tr);
+  },
+  load: function () { loadTable(this); }
+};
+
+// SSE 实时推送（R6.4）：Alerts 视角时重拉表（后端查询毫秒级，比手工
+// prepend 行可靠）；其他视角在 footer 记数，切到 Alerts 由 load 对齐。
+function initStream() {
+  if (!window.EventSource) return;
+  var es = new EventSource('/api/stream');
+  es.addEventListener('alert', function (e) {
+    if (active === 'alerts') { load(alertsTab); return; }
+    pendingAlerts++;
+    $('footer').textContent = '1-6 switch tab · r refresh · l logout · live: ' + pendingAlerts + ' new alert(s)';
+  });
+}
+var pendingAlerts = 0;
+
+// ---- triage tab
+
+var triageTab = {
+  id: 'triage', ep: '/triage',
+  filters: [
+    { k: 'state', options: ['escalate', 'insufficient_evidence', 'benign_candidate'] },
+    { k: 'rule' }
+  ],
+  cols: ['ts', 'alert_ts', 'rule_id', 'state', 'confidence', 'model', 'latency_ms', 'reasoning'],
+  mount: function (sec) {
+    this.stats = el('div'); this.stats.id = 'tri-stats';
+    var b = buildTable(this.cols);
+    this.tb = b.tb; this.n = b.n;
+    this.status = el('div', 'status');
+    sec.appendChild(this.stats); sec.appendChild(b.t); sec.appendChild(this.status);
+  },
+  row: function (tb, r) {
+    var tr = el('tr');
+    tr.appendChild(el('td', null, fmtTime(r.ts)));
+    tr.appendChild(el('td', null, fmtTime(r.alert_ts)));
+    tr.appendChild(el('td', null, r.rule_id));
+    var st = el('td');
+    st.appendChild(stSpan(r.state));
+    tr.appendChild(st);
+    tr.appendChild(el('td', null, Number(r.confidence || 0).toFixed(2)));
+    tr.appendChild(el('td', null, r.model));
+    tr.appendChild(el('td', null, r.latency_ms == null || r.latency_ms === '' ? '' : r.latency_ms + 'ms'));
+    var td = el('td', 'ellip', r.reasoning == null ? '' : r.reasoning);
+    td.title = r.reasoning == null ? '' : r.reasoning;
+    tr.appendChild(td);
+    tb.appendChild(tr);
+  },
+  load: function () {
+    api('/triage?stats=1').then(function (m) {
+      renderTriageStats(triageTab.stats, m);
+    }).catch(function () {
+      triageTab.stats.textContent = 'stats unavailable';
+    });
+    loadTable(this);
+  }
+};
+
+function renderTriageStats(box, m) {
+  box.textContent = '';
+  var keys = ['received', 'triaged', 'parse_error', 'timeout'];
+  var first = true;
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    if (!(k in m)) continue;
+    if (!first) box.appendChild(document.createTextNode(' · '));
+    first = false;
+    var sp = el('span', null, k + ' ' + m[k]);
+    if ((k === 'parse_error' || k === 'timeout') && Number(m[k]) > 0) sp.className = 'warn';
+    box.appendChild(sp);
+  }
+}
+
+// ---- agents tab（/api/agents 专用端点：全量心跳登记，无截断；心跳明细就近补全）
+
+var agentsTab = {
+  id: 'agents',
+  cols: ['status', 'agent_id', 'hostname', 'instance_id', 'collector_mode', 'kernel', 'events_sent', 'events_dropped', 'last_seen'],
+  mount: function (sec) {
+    var b = buildTable(this.cols);
+    this.tb = b.tb; this.n = b.n;
+    this.cap = el('div', 'cap', '');
+    this.status = el('div', 'status');
+    sec.appendChild(b.t); sec.appendChild(this.cap); sec.appendChild(this.status);
+  },
+  load: function () {
+    var self = this;
+    function j(p) { return api(p).catch(function () { return null; }); }
+    Promise.all([
+      j('/api/agents'),
+      j('/events?type=AGENT_HEARTBEAT&limit=100')
+    ]).then(function (rs) {
+      var inv = rs[0];
+      var hbs = Array.isArray(rs[1]) ? rs[1] : [];
+      var latest = {};
+      for (var i = 0; i < hbs.length; i++) {
+        var r = hbs[i];
+        var prev = latest[r.agent_id];
+        if (!prev || Date.parse(r.ts) > Date.parse(prev.ts)) latest[r.agent_id] = r;
+      }
+      self.status.textContent = '';
+      self.tb.textContent = '';
+      if (inv && Array.isArray(inv.agents)) {
+        var list = inv.agents.slice().sort(function (a, b) { return b.last_ms - a.last_ms; });
+        if (!list.length) {
+          emptyRow(self.tb, self.n);
+        } else {
+          for (var k = 0; k < list.length; k++) {
+            renderAgent(self.tb, list[k], latest[list[k].agent_id], inv.threshold_sec);
+          }
+        }
+        self.cap.textContent = list.length + ' agents · online = heartbeat within ' + inv.threshold_sec + 's';
+      } else if (hbs.length) {
+        // 旧二进制无 /api/agents：退回事件流反推（截断 100）
+        var keys = Object.keys(latest).sort(function (a, b2) { return Date.parse(latest[b2].ts) - Date.parse(latest[a].ts); });
+        for (var m = 0; m < keys.length; m++) renderAgent(self.tb, { agent_id: keys[m], hostname: latest[keys[m]].hostname, last_ms: Date.parse(latest[keys[m]].ts) }, latest[keys[m]], 300);
+        self.cap.textContent = 'derived from heartbeats (legacy, capped at 100)';
+      } else {
+        emptyRow(self.tb, self.n);
+        self.cap.textContent = '';
+      }
+      markUpdated();
+    });
+  }
+};
+
+function renderAgent(tb, inv, hbRow, thresholdSec) {
+  var h = {};
+  if (hbRow) {
+    var b = hbRow.body || {};
+    h = b.heartbeat || b.Heartbeat || {};
+  }
+  function pick() {
+    for (var i = 0; i < arguments.length; i++) {
+      if (h[arguments[i]] != null) return h[arguments[i]];
+    }
+    return '';
+  }
+  var lastMs = inv.last_ms || (hbRow ? Date.parse(hbRow.ts) : 0);
+  var online = lastMs > 0 && (Date.now() - lastMs) < (thresholdSec || 90) * 1000;
+  var tr = el('tr');
+  // agent 钻取（最小实现）：点击跳 Events 并按该 agent
+  // 过滤；Shift+点击跳 Alerts。
+  tr.setAttribute('data-clickable', '');
+  tr.title = 'click: events by agent · shift+click: alerts';
+  tr.addEventListener('click', function (ev) {
+    var target = ev.shiftKey ? 'alerts' : 'events';
+    switchTab(target);
+    var f = document.getElementById('f-' + target + '-agent');
+    if (f) { f.value = inv.agent_id || ''; }
+    load(cur());
+  });
+  var st = el('td', null, online ? 'online' : 'offline');
+  st.className = online ? '' : 'stale';
+  tr.appendChild(st);
+  tr.appendChild(el('td', null, inv.agent_id));
+  tr.appendChild(el('td', null, inv.hostname || (hbRow ? hbRow.hostname : '')));
+  tr.appendChild(el('td', null, inv.instance_id || ''));
+  tr.appendChild(el('td', null, pick('collectorMode', 'collector_mode')));
+  tr.appendChild(el('td', null, h.kernel == null ? '' : h.kernel));
+  tr.appendChild(el('td', null, pick('eventsSent', 'events_sent')));
+  tr.appendChild(el('td', null, pick('eventsDropped', 'events_dropped')));
+  var td = el('td', null, lastMs ? fmtTime(new Date(lastMs).toISOString()) : '');
+  if (!online) td.className = 'stale';
+  tr.appendChild(td);
+  tb.appendChild(tr);
+}
+
+// ---- rules tab（/api/rules 专用端点：全量规则清单含未命中，hits 来自 24h 聚合）
+
+var rulesTab = {
+  id: 'rules',
+  cols: ['rule_id', 'severity', 'mitre', 'event', 'hits_24h'],
+  mount: function (sec) {
+    var b = buildTable(this.cols);
+    this.tb = b.tb; this.n = b.n;
+    this.cap = el('div', 'cap', '');
+    this.status = el('div', 'status');
+    sec.appendChild(b.t); sec.appendChild(this.cap); sec.appendChild(this.status);
+  },
+  load: function () {
+    var self = this;
+    api('/api/rules').then(function (payload) {
+      if (!payload || !Array.isArray(payload.rules)) throw new Error('unexpected payload');
+      var list = payload.rules.slice().sort(function (a, b) {
+        return (b.hits_24h - a.hits_24h) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+      });
+      self.status.textContent = '';
+      self.tb.textContent = '';
+      if (!list.length) {
+        emptyRow(self.tb, self.n);
+      } else {
+        for (var j = 0; j < list.length; j++) {
+          var r = list[j];
+          var tr = el('tr');
+          tr.appendChild(el('td', null, r.id));
+          var sev = el('td');
+          sev.appendChild(sevSpan(r.severity || 'info'));
+          tr.appendChild(sev);
+          tr.appendChild(el('td', null, r.mitre || ''));
+          tr.appendChild(el('td', null, r.event || ''));
+          tr.appendChild(el('td', null, String(r.hits_24h || 0)));
+          self.tb.appendChild(tr);
+        }
+      }
+      var hit = list.filter(function (x) { return x.hits_24h > 0; }).length;
+      self.cap.textContent = list.length + ' rules · ' + hit + ' hit in 24h' +
+        (payload.degraded && payload.degraded.length ? ' · degraded: ' + payload.degraded.join(', ') : '');
+      markUpdated();
+    }).catch(function (e) {
+      self.status.textContent = 'error: ' + e.message;
+    });
+  }
+};
+
+// ---- dashboard tab
+
+var dashboardTab = {
+  id: 'dashboard',
+  CARDS: [
+    { id: 'agents', lbl: 'agents online' },
+    { id: 'events', lbl: 'events 24h' },
+    { id: 'alerts', lbl: 'alerts 24h' },
+    { id: 'critical', lbl: 'critical', cls: 'n-critical' },
+    { id: 'high', lbl: 'high', cls: 'n-high' },
+    { id: 'escalate', lbl: 'escalate' },
+    { id: 'llm', lbl: 'llm tokens 24h' },
+    { id: 'degraded', lbl: 'degraded' }
+  ],
+  mount: function (sec) {
+    var cards = el('div', 'cards');
+    for (var i = 0; i < this.CARDS.length; i++) {
+      var c = this.CARDS[i];
+      var card = el('div', 'card');
+      var num = el('div', 'num' + (c.cls ? ' ' + c.cls : ''), '-');
+      num.id = 'card-' + c.id;
+      card.appendChild(num);
+      card.appendChild(el('div', 'lbl', c.lbl));
+      cards.appendChild(card);
+    }
+    this.status = el('div', 'status');
+    this.meta = el('div', 'cap');
+    this.list = el('div');
+    this.list.id = 'dash-list';
+    sec.appendChild(cards);
+    sec.appendChild(this.status);
+    sec.appendChild(el('div', 'dash-sec', 'recent high+ alerts'));
+    sec.appendChild(this.list);
+    sec.appendChild(this.meta);
+  },
+  load: function () {
+    var self = this;
+    function j(p) { return api(p).catch(function () { return null; }); }
+    Promise.all([
+      j('/healthz'),
+      j('/api/stats'),
+      j('/alerts?limit=100'),
+      j('/triage?limit=100'),
+      j('/events?limit=500'),
+      j('/events?type=AGENT_HEARTBEAT&limit=100')
+    ]).then(function (rs) {
+      var hz = rs[0];
+      var stats = rs[1];
+      var als = Array.isArray(rs[2]) ? rs[2] : [];
+      var tris = Array.isArray(rs[3]) ? rs[3] : [];
+      self.status.textContent = (!hz && !stats && !als.length) ? 'error: endpoint unavailable' : '';
+      var ev24 = {}, al24 = {};
+      if (stats && stats.events_24h) ev24 = stats.events_24h;
+      if (stats && stats.alerts_24h) al24 = stats.alerts_24h;
+      function sum(m) {
+        var n = 0;
+        for (var k in m) if (Object.prototype.hasOwnProperty.call(m, k)) n += m[k];
+        return n;
+      }
+      if (stats && stats.agents) {
+        setCard('agents', stats.agents.online + '/' + stats.agents.total);
+      } else {
+        var hbs = Array.isArray(rs[5]) ? rs[5] : [];
+        setCard('agents', countFreshAgents(hbs));
+      }
+      if (stats) {
+        setCard('events', fmtBig(sum(ev24)));
+        setCard('alerts', String(sum(al24)));
+        setCard('critical', String(al24.critical || 0));
+        setCard('high', String(al24.high || 0));
+      } else {
+        var evs = Array.isArray(rs[4]) ? rs[4] : [];
+        setCard('events', countCard(evs, 500));
+        setCard('alerts', countCard(als, 100));
+        setCard('critical', sevCount(als, 'critical'));
+        setCard('high', sevCount(als, 'high'));
+      }
+      setCard('escalate', stateCount(tris, 'escalate'));
+      setCard('degraded', stats && stats.degraded ? String(stats.degraded.length) : '0');
+      if (stats && stats.llm_usage_24h) {
+        var u = stats.llm_usage_24h;
+        var tk = (u.tokens_in || 0) + (u.tokens_out || 0);
+        var tkStr = tk >= 1e6 ? (tk / 1e6).toFixed(1) + 'M' : tk >= 1e3 ? (tk / 1e3).toFixed(0) + 'k' : String(tk);
+        setCard('llm', tkStr);
+      } else {
+        var tSum = 0;
+        for (var ti = 0; ti < tris.length; ti++) tSum += (tris[ti].tokens_in || 0) + (tris[ti].tokens_out || 0);
+        setCard('llm', String(tSum));
+      }
+      renderRecent(als);
+      self.meta.textContent = 'healthz ' + (hz && hz.status === 'ok' ? 'ok' : 'unreachable') +
+        (stats ? ' · 24h aggregates uncapped' : ' · legacy derivation, counts capped at fetch limit');
+      markUpdated();
+    });
+  }
+};
+
+function setCard(id, v) {
+  var n = document.getElementById('card-' + id);
+  if (n) n.textContent = v;
+}
+
+function countFreshAgents(rows) {
+  var set = {};
+  for (var i = 0; i < rows.length; i++) {
+    if (within(rows[i].ts, FRESH)) set[rows[i].agent_id] = 1;
+  }
+  return String(Object.keys(set).length);
+}
+
+function countCard(rows, limit) {
+  var n = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (within(rows[i].ts, DAY)) n++;
+  }
+  var capped = rows.length === limit && rows.length > 0 && within(rows[rows.length - 1].ts, DAY);
+  return capped ? n + '+' : String(n);
+}
+
+function sevCount(rows, sev) {
+  var n = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].severity === sev && within(rows[i].ts, DAY)) n++;
+  }
+  return String(n);
+}
+
+function stateCount(rows, st) {
+  var n = 0;
+  for (var i = 0; i < rows.length; i++) {
+    if (rows[i].state === st && within(rows[i].ts, DAY)) n++;
+  }
+  return String(n);
+}
+
+function renderRecent(als) {
+  var box = $('#dash-list');
+  box.textContent = '';
+  var rows = Array.isArray(als)
+    ? als.filter(function (r) { return r.severity === 'critical' || r.severity === 'high'; })
+    : [];
+  if (!rows.length) {
+    box.appendChild(el('div', 'cap', 'no high+ alerts in sample'));
+    return;
+  }
+  rows = rows.slice(0, 5);
+  for (var i = 0; i < rows.length; i++) {
+    var r = rows[i];
+    var line = el('div', 'aline');
+    line.appendChild(sevSpan(r.severity));
+    line.appendChild(el('span', null, r.rule_id));
+    line.appendChild(el('span', 'dim', r.hostname));
+    line.appendChild(el('span', 'time', fmtTime(r.ts)));
+    box.appendChild(line);
+  }
+}
+
+// ---- tab registry / shell
+
+var TABS = [dashboardTab, eventsTab, alertsTab, triageTab, agentsTab, rulesTab];
+var active = 'dashboard';
+
+function cur() {
+  for (var i = 0; i < TABS.length; i++) {
+    if (TABS[i].id === active) return TABS[i];
+  }
+  return TABS[0];
+}
+
+function build() {
+  for (var i = 0; i < TABS.length; i++) {
+    var t = TABS[i];
+    var sec = el('section');
+    sec.id = 'panel-' + t.id;
+    sec.hidden = t.id !== active;
+    t.mount(sec);
+    $('#main').appendChild(sec);
+
+    var fg = el('div', 'filters');
+    fg.id = 'filters-' + t.id;
+    fg.hidden = t.id !== active;
+    var fs = t.filters || [];
+    for (var j = 0; j < fs.length; j++) {
+      var f = fs[j];
+      var lab = el('label', null, f.k);
+      lab.setAttribute('for', 'f-' + t.id + '-' + f.k);
+      fg.appendChild(lab);
+      var ctl;
+      if (f.options) {
+        ctl = el('select');
+        var opt = el('option', null, 'all');
+        opt.value = '';
+        ctl.appendChild(opt);
+        for (var m = 0; m < f.options.length; m++) {
+          var o = el('option', null, f.options[m]);
+          o.value = f.options[m];
+          ctl.appendChild(o);
+        }
+      } else {
+        ctl = el('input');
+        ctl.type = 'text';
+      }
+      ctl.id = 'f-' + t.id + '-' + f.k;
+      ctl.addEventListener('change', function () { load(cur()); });
+      fg.appendChild(ctl);
+    }
+    $('#filters').appendChild(fg);
+  }
+}
+
+function switchTab(id) {
+  active = id;
+  var btns = document.querySelectorAll('.tab');
+  for (var i = 0; i < btns.length; i++) {
+    var on = btns[i].getAttribute('data-tab') === id;
+    btns[i].classList.toggle('on', on);
+    btns[i].setAttribute('aria-selected', on ? 'true' : 'false');
+  }
+  for (var s = 0; s < TABS.length; s++) {
+    var t = TABS[s];
+    var panel = document.getElementById('panel-' + t.id);
+    if (panel) panel.hidden = t.id !== id;
+    var fg = document.getElementById('filters-' + t.id);
+    if (fg) fg.hidden = t.id !== id;
+  }
+  $('#meta-bar').hidden = !cur().filters;
+  load(cur());
+}
+
+function load(t) { t.load(); }
+
+$('#tabs').addEventListener('click', function (e) {
+  var b = e.target.closest('.tab');
+  if (b) switchTab(b.getAttribute('data-tab'));
+});
+$('#logout').addEventListener('click', logout);
+$('#limit').addEventListener('change', function () { load(cur()); });
+document.addEventListener('keydown', function (e) {
+  var tag = (e.target.tagName || '').toUpperCase();
+  if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+  var k = e.key.toLowerCase();
+  if (k >= '1' && k <= '6') switchTab(TABS[Number(k) - 1].id);
+  else if (k === 'r') load(cur());
+  else if (k === 'l') logout();
+});
+
+build();
+
+// R9 件2：URL hash 过滤态——#tab/k=v/k=v 形态。加载时恢复视角，过滤器
+// change 时 replaceState 写入（不污染历史）。分享链接 = location.href。
+function writeHash() {
+  var t = cur(), parts = [active], p = new URLSearchParams();
+  var fg = t.filters || [];
+  for (var j = 0; j < fg.length; j++) {
+    var v = document.getElementById('f-' + t.id + '-' + fg[j].k);
+    if (v && v.value) p.set(fg[j].k, v.value);
+  }
+  var qs = p.toString();
+  history.replaceState(null, '', '#' + active + (qs ? '/' + qs : ''));
+}
+function readHash() {
+  var h = location.hash.slice(1);
+  if (!h) return false;
+  var seg = h.split('/'), tabId = seg[0], params = new URLSearchParams(seg[1] || '');
+  var ok = false;
+  for (var i = 0; i < TABS.length; i++) if (TABS[i].id === tabId) { ok = true; break; }
+  if (!ok) return false;
+  // 先填过滤器再 switchTab：面板与过滤器在 build() 时已挂载，switchTab
+  // 内的 load 才能带着过滤值查询并写出正确 hash（验收发现：原序先 load
+  // 后填，数据未过滤且 hash 被清空）。
+  var t0 = null;
+  for (var m = 0; m < TABS.length; m++) if (TABS[m].id === tabId) t0 = TABS[m];
+  var fg0 = (t0 && t0.filters) || [];
+  for (var j = 0; j < fg0.length; j++) {
+    var v = params.get(fg0[j].k);
+    var f = document.getElementById('f-' + tabId + '-' + fg0[j].k);
+    if (v && f) f.value = v;
+  }
+  switchTab(tabId);
+  return true;
+}
+(function () {
+  var origLoad = load;
+  load = function (t) { writeHash(); origLoad(t); };
+})();
+if (!readHash()) switchTab('dashboard');
+
+initStream();
+refreshDegradedBar();
+setInterval(function () { load(cur()); refreshDegradedBar(); }, 30000);
+</script>
+</body>
+</html>

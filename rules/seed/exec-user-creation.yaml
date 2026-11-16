@@ -1,0 +1,15 @@
+id: exec-user-creation
+type: field
+event: EXECVE
+severity: medium
+mitre: T1136
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '^useradd\s|^sudo\s+useradd\s|[;|&]\s*useradd\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'adduser\s+--(shell|gid|uid)|chpasswd|passwd\s+--stdin'
+action: alert

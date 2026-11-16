@@ -1,0 +1,15 @@
+id: exec-authorized-keys-write
+type: field
+event: EXECVE
+severity: critical
+mitre: T1098.004
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>>|tee\s+-a)[^|;&]*authorized_keys'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'ssh-(rsa|ed25519|dsa|ecdsa)[^|;&]*(>>|authorized_keys)'
+action: alert

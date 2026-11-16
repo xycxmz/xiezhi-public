@@ -1,0 +1,12 @@
+id: exec-cap-grant-priv
+type: field
+event: EXECVE
+severity: high
+mitre: T1548.001
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'cap_(setuid|sys_admin|sys_ptrace|dac_override|dac_read_search|sys_module)'
+action: alert

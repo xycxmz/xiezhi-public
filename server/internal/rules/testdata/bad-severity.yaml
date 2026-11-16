@@ -1,0 +1,11 @@
+id: x-severity
+type: field
+event: EXECVE
+severity: fatal
+match:
+  logic: and
+  conditions:
+    - op: INCL
+      field: execve.proc.exe
+      value: /tmp/
+action: alert

@@ -1,0 +1,15 @@
+id: exec-chattr-immutable
+type: field
+event: EXECVE
+severity: medium
+mitre: T1222.002
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'chattr\s+[^;|]*\+[iasu]'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '^\+[iasu]$'
+action: alert

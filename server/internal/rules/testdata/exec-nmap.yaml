@@ -1,0 +1,16 @@
+# 冻结 schema 的规范形态：路径为 protojson 全路径（execve. 前缀 + 点下标）。
+id: exec-recon-nmap
+type: field
+event: EXECVE
+severity: medium
+mitre: T1046
+match:
+  logic: and
+  conditions:
+    - op: EQU
+      field: execve.proc.argv.0
+      value: nmap
+    - op: REGEX
+      field: execve.proc.argv
+      value: '-s[ST]|-A|--script'
+action: alert

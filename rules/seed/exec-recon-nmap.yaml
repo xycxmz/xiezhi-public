@@ -1,0 +1,15 @@
+id: exec-recon-nmap
+type: field
+event: EXECVE
+severity: medium
+mitre: T1046
+match:
+  logic: and
+  conditions:
+    - op: INCL
+      field: execve.proc.argv
+      value: nmap
+    - op: REGEX
+      field: execve.proc.argv
+      value: '-s[ST]|-A|--script|-p\s'
+action: alert

@@ -1,0 +1,18 @@
+id: exec-recon-axfr-dns
+type: field
+event: EXECVE
+severity: medium
+mitre: T1018
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\bAXFR\b'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(?i)(dig|nslookup)\s+[^;|]*-type=\s*(AXFR|ANY|SRV|MX)'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'host\s+[^;|]*-t\s*(AXFR|ANY|SRV|MX|TXT|NS)\b'
+action: alert

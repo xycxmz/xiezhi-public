@@ -1,0 +1,12 @@
+id: exec-exfil-archive-remote
+type: field
+event: EXECVE
+severity: medium
+mitre: T1041
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(scp|sftp|rsync)\s+[^;|]*(/tmp/|/var/tmp/|/dev/shm/)[^;|]*\.(tar|tgz|zip|gz|7z|bz2)\b[^;|]*@'
+action: alert

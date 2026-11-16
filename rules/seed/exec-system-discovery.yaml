@@ -1,0 +1,12 @@
+id: exec-system-discovery
+type: field
+event: EXECVE
+severity: low
+mitre: T1082
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'uname\s+-(a|r|s)|(cat|head|tail|less|more)\s+/etc/(passwd|issue)'
+action: alert

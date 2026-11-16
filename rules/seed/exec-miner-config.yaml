@@ -1,0 +1,15 @@
+id: exec-miner-config
+type: field
+event: EXECVE
+severity: critical
+mitre: T1496
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(xmrig|minerd|stratum\+tcp|pool\.minexmr|nanopool|supportxmr)'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '--donate-level|--cpu-max-threads|--url=stratum'
+action: alert

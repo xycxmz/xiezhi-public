@@ -1,0 +1,18 @@
+id: exec-setuid-discovery
+type: field
+event: EXECVE
+severity: medium
+mitre: T1548.001
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'find\s+[^;|]*-perm\s*-[246]000'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'getcap\s+[^;|]*-r'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '^-[246]000$'
+action: alert

@@ -1,0 +1,15 @@
+id: exec-sudoers-write
+type: field
+event: EXECVE
+severity: critical
+mitre: T1548.003
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>>|tee\s+-a)[^;|]*\s*/etc/sudoers'
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>>|>)\s*/etc/sudoers'
+action: alert

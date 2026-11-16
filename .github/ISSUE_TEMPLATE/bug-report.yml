@@ -1,0 +1,62 @@
+name: 缺陷报告
+description: 程序行为异常：编译失败、崩溃、告警/研判结果与预期不符、控制台问题等
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象描述
+      description: 一句话说清发生了什么、期望是什么。
+      placeholder: 例：agent 在 CentOS 7 3.10.0-1160 内核上加载驱动后 10 秒退出，日志报 xxx。
+    validations:
+      required: true
+  - type: dropdown
+    id: component
+    attributes:
+      label: 组件
+      options:
+        - agent（采集：eBPF / LKM / 进程轮询）
+        - server（规则引擎 / 意图层 / 会话树 / LLM 研判）
+        - driver / bpf（内核态）
+        - 检测规则（rules/seed）
+        - 控制台（Web UI）
+        - 工具链（make / tools / CI）
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / commit
+      description: release tag 或 git commit 哈希；自编译请注明 Go 版本与内核版本。
+      placeholder: "v0.1.0 或 a0b430c；内核 3.10.0-1160.80.1.el7.x86_64"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 依次执行的命令/操作；能给出最小复现最好。
+      placeholder: |
+        1. make build
+        2. ./xiezhi-agent --config ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志 / 输出
+      description: agent/server 日志片段、dmesg、控制台报错。脱敏后再贴——不要放真实环境 IP 与凭据。
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查
+      options:
+        - label: 我确认仓库里没有重复 issue。
+          required: true
+        - label: 这是程序缺陷而非安全漏洞/检测绕过（后者请走私密披露）。
+          required: true

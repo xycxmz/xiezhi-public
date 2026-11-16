@@ -1,0 +1,11 @@
+id: x-numval
+type: field
+event: CONNECT
+severity: low
+match:
+  logic: and
+  conditions:
+    - op: MT
+      field: net.port
+      value: abc
+action: alert

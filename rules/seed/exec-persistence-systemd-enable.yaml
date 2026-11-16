@@ -1,0 +1,18 @@
+id: exec-persistence-systemd-enable
+type: field
+event: EXECVE
+severity: medium
+mitre: T1543.002
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'systemctl\s+(enable|reenable)\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'update-rc\.d\s+\S+\s+(enable|defaults)'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'chkconfig\s+\S+\s+on\b'
+action: alert

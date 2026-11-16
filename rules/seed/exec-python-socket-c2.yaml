@@ -1,0 +1,12 @@
+id: exec-python-socket-c2
+type: field
+event: EXECVE
+severity: high
+mitre: T1095
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'python[23]?\s+(-c|-m)\s+[^|;&]*(socket|create_connection|connect_ex|\.connect\()'
+action: alert

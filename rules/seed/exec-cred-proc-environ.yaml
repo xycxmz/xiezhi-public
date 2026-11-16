@@ -1,0 +1,12 @@
+id: exec-cred-proc-environ
+type: field
+event: EXECVE
+severity: medium
+mitre: T1552.004
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '/proc/[0-9]+/environ|/proc/self/environ'
+action: alert

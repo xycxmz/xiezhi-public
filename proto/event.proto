@@ -1,0 +1,230 @@
+syntax = "proto3";
+
+package xiezhi.v1;
+
+option go_package = "github.com/xycxmz/xiezhi-public/proto;proto";
+
+// xiezhi 事件 schema v0.5（M3：HeartbeatEvent 追加 instance_id，纯增量）。
+// 设计依据：Elkeid 事件集 + 富化字段为底。
+// 3.10 LKM 线无 BPF_LOAD 事件（bpf 系统调用 3.18 才引入），该事件仅 eBPF 线（M5）使用。
+
+enum EventType {
+  EVENT_UNKNOWN = 0;
+
+  // 进程
+  EXECVE = 1;
+  EXECVEAT = 2;
+  FORK = 3;
+  EXIT = 4;
+
+  // 网络
+  CONNECT = 10;
+  BIND = 11;
+  ACCEPT = 12;
+  DNS_QUERY = 13; // 目标端口 53/5353 的 udp 查询（域名出 dig 类行为，LKM/eBPF 线同）
+
+  // 文件（仅监看目录/规则命中，非全量）
+  FILE_OPEN = 20;
+  FILE_CREATE = 21;
+  FILE_RENAME = 22;
+  FILE_UNLINK = 23;
+  FILE_LINK = 24;
+
+  // 内存执行（无文件攻击）
+  MEMFD_CREATE = 30;
+  MPROT_EXEC = 31; // mmap/mprotect 出现 PROT_EXEC
+
+  // 内核态
+  MODULE_LOAD = 40;         // init_module/finit_module
+  USERMODE_HELPER = 41;     // call_usermodehelper
+  BPF_LOAD = 42;            // 仅 eBPF 线（>=3.18 内核）
+
+  // 凭据/权限
+  CRED_CHANGE = 50;  // old uid != 0 -> new uid == 0
+  PTRACE = 51;       // POKETEXT/POKEDATA
+  SETSID = 52;
+  PRCTL_NAME = 53;   // PR_SET_NAME（进程名伪装）
+
+  // agent 自身（不来自内核采集）
+  AGENT_HEARTBEAT = 100;
+  AGENT_EVENT = 101; // spool 溢出/通道阻断/driver 加载失败/配置回退等
+  AGENT_OFFLINE = 102; // server 端 dead-man 看门狗生成（心跳缺失×电源对账后）
+  PROC_DIFF = 110;   // /proc 对账差异（隐藏进程检测）
+  JOURNAL_AUTH = 120; // ssh/sudo/su/cron
+}
+
+message EventHeader {
+  string agent_id = 1;     // 首次启动生成并持久化的稳定标识
+  string hostname = 2;
+  string boot_id = 3;      // /proc/sys/kernel/random/boot_id
+  uint64 ts_ms = 4;        // 墙上钟
+  uint64 seq = 5;          // agent 内单调序号（对账丢包）
+  string kernel = 6;       // uname -r
+  uint64 cgroup_id = 7;    // 内核态原生容器标记（0=不可得）
+  string container_id = 8; // 用户态富化（可空）
+  EventType event_type = 9;
+}
+
+message ProcessContext {
+  uint32 pid = 1;
+  uint32 ppid = 2;
+  string exe = 3;        // 解析后绝对路径
+  uint64 exe_inode = 4;
+  string exe_sha256 = 5; // 首见计算并缓存；复用 first-seen 层
+  repeated string argv = 6;
+  map<string, string> env_sel = 7; // 仅白名单键：LD_PRELOAD/LD_LIBRARY_PATH/SSH_CONNECTION
+  uint32 uid = 8;
+  uint32 euid = 9;
+  string tty = 10;
+  string pid_tree = 11;  // exe 链，如 bash->sh->curl
+  uint64 start_ticks = 12; // (pid, boot_id, start_ticks) 复合键防 PID 复用
+  uint32 pns = 13;
+  uint32 root_pns = 14;
+}
+
+message FileRef {
+  string path = 1;
+  uint64 inode = 2;
+  string sha256 = 3; // 按需
+}
+
+message ExecveEvent {
+  ProcessContext proc = 1;
+  string cwd = 2;
+  bool from_memfd = 3; // fd 来源为 memfd
+}
+
+message ExitEvent {
+  uint32 pid = 1;
+  uint64 start_ticks = 2;
+  int32 code = 3;
+}
+
+message ForkEvent {
+  ProcessContext parent = 1;
+  uint32 child_pid = 2;
+  uint64 child_start_ticks = 3;
+}
+
+message NetEvent {
+  ProcessContext proc = 1;
+  string op = 2;          // connect/bind/accept
+  bytes ip = 3;           // 4/16 字节
+  uint32 port = 4;
+  string family = 5;      // tcp4/tcp6/udp4/udp6
+  int32 ret = 6;          // connect 返回值（区分失败尝试）
+}
+
+message DnsEvent {
+  ProcessContext proc = 1;
+  repeated string queries = 2; // 域名（解析后字段，可能多条）
+  string server_ip = 3;
+  uint32 server_port = 4;
+}
+
+message FileEvent {
+  ProcessContext proc = 1;
+  string op = 2; // open/create/rename/unlink/link
+  FileRef file = 3;
+  FileRef dest = 4; // rename/link 目标
+}
+
+message MemExecEvent {
+  ProcessContext proc = 1;
+  string kind = 2;  // memfd_create/mprotect_exec
+  string fd_path = 3;
+}
+
+message KernelModuleEvent {
+  ProcessContext proc = 1;
+  string kind = 2;   // init_module/usermode_helper/bpf_load
+  string module = 3; // 模块名/路径（可得时）
+}
+
+message CredEvent {
+  uint32 pid = 1;
+  uint32 old_uid = 2;
+  uint32 new_uid = 3;
+  string exe = 4;
+}
+
+message PtraceEvent {
+  ProcessContext tracer = 1;
+  uint32 target_pid = 2;
+  string request = 3;
+}
+
+message MiscProcessEvent {
+  ProcessContext proc = 1;
+  string kind = 2; // setsid/prctl_name
+  string value = 3;
+}
+
+message HeartbeatEvent {
+  string agent_version = 1;
+  string rule_version = 2;   // 规则集内容哈希
+  string config_version = 3;
+  string kernel = 4;
+  bool driver_loaded = 5;
+  string collector_mode = 6; // lkm/ebpf/proc-poll 降级标记
+  uint64 events_sent = 7;
+  uint64 events_dropped = 8; // ring buffer 丢包计数
+  uint64 spool_bytes = 9;
+  string instance_id = 10;   // ECS metadata instance-id（M3：deadman 电源对账映射键；物理机为空）
+}
+
+message AgentEvent {
+  string kind = 1;         // channel_blocked/spool_overflow/driver_load_failed/config_rollback/...
+  string detail = 2;
+}
+
+message ProcDiffEvent {
+  string kind = 1;         // hidden_process/appeared_process/hidden_connection
+  repeated string pids = 2;
+  string detail = 3;
+}
+
+message JournalAuthEvent {
+	string kind = 1;         // ssh_login/sudo/su/cron
+	string user = 2;
+	string source_ip = 3;
+	string result = 4;
+	string raw = 5;          // 截断原始行（untrusted 数据）
+}
+
+// server 端 dead-man 看门狗产出（AGENT_OFFLINE）：心跳缺失且电源对账未排除。
+message AgentOfflineEvent {
+	string agent_id = 1;
+	string hostname = 2;
+	int64 last_heartbeat_ms = 3; // 最后一次心跳的 ts_ms
+	int64 staleness_ms = 4;      // 判定时的滞后时长
+	string power_state = 5;      // running/stopped/not_found（ECS/SAS 对账结果）
+	string detail = 6;
+}
+
+message Event {
+  EventHeader header = 1;
+  oneof body {
+    ExecveEvent execve = 2;
+    ExitEvent exit = 3;
+    ForkEvent fork = 4;
+    NetEvent net = 5;
+    DnsEvent dns = 6;
+    FileEvent file = 7;
+    MemExecEvent mem_exec = 8;
+    KernelModuleEvent kernel_module = 9;
+    CredEvent cred = 10;
+    PtraceEvent ptrace = 11;
+    MiscProcessEvent misc = 12;
+    HeartbeatEvent heartbeat = 13;
+    AgentEvent agent = 14;
+    ProcDiffEvent proc_diff = 15;
+    JournalAuthEvent journal_auth = 16;
+    AgentOfflineEvent agent_offline = 17;
+  }
+}
+
+// 上行批量包（gRPC 流帧）
+message EventBatch {
+  repeated Event events = 1;
+}

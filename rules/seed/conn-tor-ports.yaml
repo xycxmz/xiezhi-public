@@ -1,0 +1,15 @@
+id: conn-tor-ports
+type: field
+event: CONNECT
+severity: medium
+mitre: T1090.003
+match:
+  logic: or
+  conditions:
+    - op: EQU
+      field: net.port
+      value: 9050
+    - op: EQU
+      field: net.port
+      value: 9150
+action: alert

@@ -1,0 +1,12 @@
+id: exec-dump-database
+type: field
+event: EXECVE
+severity: medium
+mitre: T1005
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\b(mysqldump|pg_dump|pg_dumpall)\b'
+action: alert

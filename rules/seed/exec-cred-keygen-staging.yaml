@@ -1,0 +1,12 @@
+id: exec-cred-keygen-staging
+type: field
+event: EXECVE
+severity: medium
+mitre: T1552.004
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'ssh-keygen\s+[^;|]*(/tmp/|/dev/shm)'
+action: alert

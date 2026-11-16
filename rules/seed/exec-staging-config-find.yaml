@@ -1,0 +1,12 @@
+id: exec-staging-config-find
+type: field
+event: EXECVE
+severity: medium
+mitre: T1083
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'find\s+/etc\s+[^;|]*-name'
+action: alert

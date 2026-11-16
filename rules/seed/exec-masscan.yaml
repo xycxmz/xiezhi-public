@@ -1,0 +1,15 @@
+id: exec-masscan
+type: field
+event: EXECVE
+severity: medium
+mitre: T1595
+match:
+  logic: or
+  conditions:
+    - op: INCL
+      field: execve.proc.argv
+      value: masscan
+    - op: INCL
+      field: execve.proc.argv
+      value: zgrab
+action: alert

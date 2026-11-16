@@ -1,0 +1,12 @@
+id: exec-dev-tcp-connect
+type: field
+event: EXECVE
+severity: high
+mitre: T1059.004
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '(>&|<&|<>)\s*/dev/(tcp|udp)/'
+action: alert

@@ -1,0 +1,27 @@
+id: exec-interp-inline-code
+type: field
+event: EXECVE
+severity: medium
+mitre: T1059
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'python[23]?\s+[^;|]*(-c|-m)\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'perl\s+[^;|]*-e\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'php\s+[^;|]*-r\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'ruby\s+[^;|]*-e\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'lua\s+[^;|]*-e\s'
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'node\s+[^;|]*-e\s'
+action: alert

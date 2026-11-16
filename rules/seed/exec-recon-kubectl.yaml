@@ -1,0 +1,12 @@
+id: exec-recon-kubectl
+type: field
+event: EXECVE
+severity: medium
+mitre: T1526
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'kubectl\s+[^;|]*(get|describe)\s+[^;|]*(nodes|secrets|all|--all-?namespaces|-A\b)'
+action: alert

@@ -1,0 +1,12 @@
+id: exec-tmp-enumerate
+type: field
+event: EXECVE
+severity: low
+mitre: T1083
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: 'ls\s+[^|;&]*(/var/tmp|/dev/shm)'
+action: alert

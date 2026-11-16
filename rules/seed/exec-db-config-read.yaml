@@ -1,0 +1,12 @@
+id: exec-db-config-read
+type: field
+event: EXECVE
+severity: high
+mitre: T1552.001
+match:
+  logic: or
+  conditions:
+    - op: REGEX
+      field: execve.proc.argv
+      value: '\.my\.cnf|\.pgpass|mongo[^ |;&]*uri'
+action: alert
